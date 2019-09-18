@@ -38,8 +38,9 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.ActivityEventListener;
 
-public class Braintree extends ReactContextBaseJavaModule  {
+public class Braintree extends ReactContextBaseJavaModule implements ActivityEventListener  {
   private static final int PAYMENT_REQUEST = 1706816330;
   private String token;
 
@@ -53,6 +54,7 @@ public class Braintree extends ReactContextBaseJavaModule  {
 
   public Braintree(ReactApplicationContext reactContext) {
     super(reactContext);
+    reactContext.addActivityEventListener(this);
   }
 
   @Override
@@ -261,17 +263,47 @@ ThreeDSecure.performVerification(this.mBraintreeFragment, threeDSecureRequest);
   }
 
   @ReactMethod
-  public void paypalRequest(final Callback successCallback, final Callback errorCallback) {
+  public void paypalRequest(final String amount , final Callback successCallback, final Callback errorCallback) {
     this.successCallback = successCallback;
     this.errorCallback = errorCallback;
-    // PayPal.authorizeAccount(this.mBraintreeFragment);
-      PayPalRequest request = new PayPalRequest("1")
+      PayPalRequest request = new PayPalRequest(amount)
     .currencyCode("EUR")
     .intent(PayPalRequest.INTENT_AUTHORIZE);
 
   PayPal.requestOneTimePayment(this.mBraintreeFragment, request);
   }
   
+ @Override
+  public void onActivityResult(Activity activity, final int requestCode, final int resultCode, final Intent data) {
+       Log.d("PAYMENT_REQUEST",""+requestCode);
+    // if (requestCode == PAYMENT_REQUEST) {
+    //   switch (resultCode) {
+    //     case Activity.RESULT_OK:
+    //       PaymentMethodNonce paymentMethodNonce = data.getParcelableExtra(
+    //         BraintreePaymentActivity.EXTRA_PAYMENT_METHOD_NONCE
+    //       );
+
+    //       if (this.threeDSecureOptions != null) {
+    //         ThreeDSecure.performVerification(this.mBraintreeFragment, paymentMethodNonce.getNonce(), String.valueOf(this.threeDSecureOptions.getDouble("amount")));
+    //       } else {
+    //         this.successCallback.invoke(paymentMethodNonce.getNonce());
+    //       }
+    //       break;
+    //     case BraintreePaymentActivity.BRAINTREE_RESULT_DEVELOPER_ERROR:
+    //     case BraintreePaymentActivity.BRAINTREE_RESULT_SERVER_ERROR:
+    //     case BraintreePaymentActivity.BRAINTREE_RESULT_SERVER_UNAVAILABLE:
+    //       this.errorCallback.invoke(
+    //         data.getSerializableExtra(BraintreePaymentActivity.EXTRA_ERROR_MESSAGE)
+    //       );
+    //       break;
+    //     case Activity.RESULT_CANCELED:
+    //       this.errorCallback.invoke("USER_CANCELLATION");
+    //       break;
+    //     default:
+    //       break;
+    //   }
+    // }
+  }
 
   public void onNewIntent(Intent intent){}
 }
