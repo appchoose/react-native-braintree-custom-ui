@@ -41,7 +41,6 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
-import com.facebook.react.bridge.ActivityEventListener;
 
 public class Braintree extends ReactContextBaseJavaModule implements ActivityEventListener  {
   private static final int PAYMENT_REQUEST = 1706816330;
@@ -57,7 +56,6 @@ public class Braintree extends ReactContextBaseJavaModule implements ActivityEve
 
   public Braintree(ReactApplicationContext reactContext) {
     super(reactContext);
-    reactContext.addActivityEventListener(this);
   }
 
   @Override
@@ -276,34 +274,5 @@ ThreeDSecure.performVerification(this.mBraintreeFragment, threeDSecureRequest);
   PayPal.requestOneTimePayment(this.mBraintreeFragment, request);
   }
   
- @Override
-  public void onActivityResult(Activity activity, final int requestCode, final int resultCode, final Intent data) {
-       Log.d("PAYMENT_REQUEST",""+requestCode);
-    // if (requestCode == PAYMENT_REQUEST) {
-    //   switch (resultCode) {
-    //     case Activity.RESULT_OK:
-    //       PaymentMethodNonce paymentMethodNonce = data.getParcelableExtra(
-    //         DropInActivity.EXTRA_PAYMENT_METHOD_NONCE
-    //       );
-
-    //         this.successCallback.invoke(paymentMethodNonce.getNonce());
-    
-    //       break;
-    //     case DropInActivity.BRAINTREE_RESULT_DEVELOPER_ERROR:
-    //     case DropInActivity.BRAINTREE_RESULT_SERVER_ERROR:
-    //     case DropInActivity.BRAINTREE_RESULT_SERVER_UNAVAILABLE:
-    //       this.errorCallback.invoke(
-    //         data.getSerializableExtra(DropInActivity.EXTRA_ERROR_MESSAGE)
-    //       );
-    //       break;
-    //     case Activity.RESULT_CANCELED:
-    //       this.errorCallback.invoke("USER_CANCELLATION");
-    //       break;
-    //     default:
-    //       break;
-    //   }
-    // }
-  }
-
   public void onNewIntent(Intent intent){}
 }
