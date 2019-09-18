@@ -1,6 +1,6 @@
 {
   "name": "react-native-braintree-custom-ui",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Cross platform Braintree module",
   "main": "index",
   "author": {

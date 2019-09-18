@@ -107,7 +107,6 @@ RCT_EXPORT_METHOD(showPayPalViewController: (NSString *)amount callback: (RCTRes
             address.phoneNumber = parameters[@"phone"];
             address.streetAddress = parameters[@"streetAddress"];
             address.locality = parameters[@"locality"];
-            address.region = parameters[@"region"];
             address.postalCode = parameters[@"postalCode"];
             threeDSecureRequest.billingAddress = address;
             // Optional additional information.
