@@ -35,14 +35,13 @@ import com.braintreepayments.api.models.PayPalRequest;
 import com.braintreepayments.api.interfaces.PaymentMethodNonceCreatedListener;
 import com.braintreepayments.api.interfaces.BraintreeErrorListener;
 import com.braintreepayments.api.models.CardNonce;
-import com.facebook.react.bridge.ActivityEventListener;
 import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
 
-public class Braintree extends ReactContextBaseJavaModule implements ActivityEventListener  {
+public class Braintree extends ReactContextBaseJavaModule   {
   private static final int PAYMENT_REQUEST = 1706816330;
   private String token;
 
