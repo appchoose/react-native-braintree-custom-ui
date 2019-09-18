@@ -41,7 +41,7 @@ repositories {
 }
 ```
 
-## Custom Integration
+## Get Card Nonce
 If you only want to tokenize credit card information, you can use the following:
 
 ```js
@@ -71,6 +71,34 @@ type Card = {
   countryCodeAlpha2: string,
   countryCodeAlpha3: string,
   countryCodeNumeric: string,
+  locality: string,
+  postalCode: string,
+  region: string,
+  streetAddress: string,
+  extendedAddress: string,
+  amount: number
+}
+```
+
+## Check 3D Secure for card nonce
+If you only want to tokenize credit card information, you can use the following:
+
+```js
+const params = {
+}
+
+BTClient.check3DSecure(params).then(function(nonce) {
+  //payment succeeded, pass nonce to server
+})
+.catch(function(err) {
+  //error handling
+});
+
+// Full list of card parameters:
+type Params = {
+  nonce: string
+  firstName: string,
+  lastName: string,
   locality: string,
   postalCode: string,
   region: string,

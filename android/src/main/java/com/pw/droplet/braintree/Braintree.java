@@ -185,8 +185,6 @@ String res = response.body().string();
     if (parameters.hasKey("lastName"))
       cardBuilder.lastName(parameters.getString("lastName"));
 
-    if (parameters.hasKey("company"))
-      cardBuilder.company(parameters.getString("company"));
 
     if (parameters.hasKey("countryCode"))
       cardBuilder.countryCode(parameters.getString("countryCode"));
