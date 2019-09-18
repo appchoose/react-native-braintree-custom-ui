@@ -94,7 +94,7 @@ RCT_EXPORT_METHOD(showPayPalViewController: (NSString *)amount callback: (RCTRes
             threeDSecureRequest.nonce =  parameters[@"nonce"];
     
             threeDSecureRequest.email = parameters[@"email"];
-            //                          threeDSecureRequest.versionRequested = BTThreeDSecureVersion2;
+            threeDSecureRequest.versionRequested = BTThreeDSecureVersion2;
     
             BTThreeDSecurePostalAddress *address = [BTThreeDSecurePostalAddress new];
             address.givenName =  parameters[@"firstname"]; // ASCII-printable characters required, else will throw a validation error

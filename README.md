@@ -21,6 +21,12 @@ BTClient.setup(<serverUrl>,'your.bundle.id.payments');
 ```
 
 
+You will need the CardinalMobile.framework for 3DS 2 (https://developers.braintreepayments.com/guides/3d-secure/client-side/ios/v4). You can easily download it with that command
+
+```
+curl -L -ubraintree-team-sdk@cardinalcommerce:220cc9476025679c4e5c843666c27d97cfb0f951  "https://cardinalcommerce.bintray.com/ios/2.1.4-2/cardinalmobilesdk.zip" -o cardinalmobile2.1.4-2.zip
+```
+
 ## Custom Integration
 If you only want to tokenize credit card information, you can use the following:
 
