@@ -1,7 +1,7 @@
 # react-native-braintree-custom-ui
 [![npm version](https://badge.fury.io/js/react-native-braintree-custom-ui.svg)](https://badge.fury.io/js/react-native-braintree-custom-ui)
 
-An effort to update https://github.com/kraffslol/react-native-braintree-xplat
+An effort to update https://github.com/kraffslol/react-native-braintree-xplat.
 Use Braintree Android SDK V2 & IOS V4, with 3D Secure V1 on every payment.
 
 ## Installation
@@ -59,7 +59,6 @@ type Card = {
   amount: number
 }
 ```
-
 
 ## PayPal Checkout 
 
