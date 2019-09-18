@@ -1,0 +1,30 @@
+apply plugin: "com.android.library"
+
+android {
+    compileSdkVersion 28
+    buildToolsVersion "28.0.3"
+
+    defaultConfig {
+        minSdkVersion 21
+        targetSdkVersion 28
+        versionCode 1
+        versionName "1.0"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false  // Set this to true to enable Proguard
+            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+        }
+    }
+}
+
+
+dependencies {
+    implementation fileTree(dir: "libs", include: ["*.jar"])
+    implementation "com.facebook.react:react-native:+"
+    compile 'com.braintreepayments.api:braintree:2.22.0'
+    compile 'com.squareup.okhttp:okhttp:2.5.0'
+    // implementation 'com.braintreepayments.api:three-d-secure:3.4.2'
+    implementation 'com.braintreepayments.api:drop-in:2.+'
+    implementation group: 'com.google.code.gson', name: 'gson', version: '2.3.1'
+}

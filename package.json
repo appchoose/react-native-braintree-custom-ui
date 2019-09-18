@@ -1,0 +1,18 @@
+{
+  "name": "react-native-braintree-custom-ui",
+  "version": "1.0.0",
+  "description": "Cross platform Braintree module",
+  "main": "index",
+  "author": {
+    "name": "Rickard Ekman",
+    "email": "rickard@swiftpulse.com",
+    "url": "https://github.com/appchoose"
+  },
+  "homepage": "https://github.com/appchoose/react-native-braintree-custom-ui",
+  "license": "MIT",
+  "respository": {
+    "type": "git",
+    "url": "git@github.com:appchoose/react-native-braintree-custom-ui.git"
+  },
+  "dependencies": {}
+}
