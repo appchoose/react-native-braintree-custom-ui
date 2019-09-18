@@ -87,12 +87,17 @@ RCT_EXPORT_METHOD(showPayPalViewController: (NSString *)amount callback: (RCTRes
     });
 }
 
+- (void)onLookupComplete:(__unused BTThreeDSecureRequest *)request result:(__unused BTThreeDSecureLookup *)lookup next:(void (^)(void))next {
+    // Optionally inspect the lookup result and prepare UI if a challenge is required
+    next();
+}
 
 - (void)run3DSecureCheck:(NSDictionary *)parameters callback: (RCTResponseSenderBlock)callback  {
             BTThreeDSecureRequest *threeDSecureRequest = [[BTThreeDSecureRequest alloc] init];
             threeDSecureRequest.amount = [NSDecimalNumber decimalNumberWithString: parameters[@"amount"]];
             threeDSecureRequest.nonce =  parameters[@"nonce"];
-    
+            // Make sure that self conforms to the BTThreeDSecureRequestDelegate protocol
+            threeDSecureRequest.threeDSecureRequestDelegate = self;
             threeDSecureRequest.email = parameters[@"email"];
             threeDSecureRequest.versionRequested = BTThreeDSecureVersion2;
     
@@ -115,23 +120,18 @@ RCT_EXPORT_METHOD(showPayPalViewController: (NSString *)amount callback: (RCTRes
             self.paymentFlowDriver = [[BTPaymentFlowDriver alloc] initWithAPIClient:self.braintreeClient];
             self.paymentFlowDriver.viewControllerPresentingDelegate = self;
     
-    
             [self.paymentFlowDriver startPaymentFlow:threeDSecureRequest completion:^(BTPaymentFlowResult * _Nonnull result, NSError * _Nonnull error) {
                 NSArray *args = @[];
                 if (error) {
-                    NSLog(@"Finally error %@", error.description);
                     args = @[error.localizedDescription, [NSNull null]];
                     // Handle error
                 } else if (result) {
-                    NSLog(@"Finally %@", result);
                     BTThreeDSecureResult *threeDSecureResult = (BTThreeDSecureResult *)result;
-    
                     if (threeDSecureResult.tokenizedCard.threeDSecureInfo.liabilityShiftPossible) {
                         if (threeDSecureResult.tokenizedCard.threeDSecureInfo.liabilityShifted) {
                             args = @[[NSNull null], threeDSecureResult.tokenizedCard.nonce];
                         } else {
                             // 3D Secure authentication failed
-                            //   args = @[serialisationErr.description, [NSNull null]];
                             args = @[@"failed", [NSNull null]];
                         }
                     }else{

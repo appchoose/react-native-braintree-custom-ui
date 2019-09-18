@@ -2,7 +2,7 @@
 [![npm version](https://badge.fury.io/js/react-native-braintree-custom-ui.svg)](https://badge.fury.io/js/react-native-braintree-custom-ui)
 
 An effort to update https://github.com/kraffslol/react-native-braintree-xplat.
-Use Braintree Android SDK V2 & IOS V4, with 3D Secure V1 on every payment.
+Use Braintree Android SDK V2 with 3DS & IOS V4 with 3DS 2.
 
 ## Installation
 
@@ -25,6 +25,20 @@ You will need the CardinalMobile.framework for 3DS 2 (https://developers.braintr
 
 ```
 curl -L -ubraintree-team-sdk@cardinalcommerce:220cc9476025679c4e5c843666c27d97cfb0f951  "https://cardinalcommerce.bintray.com/ios/2.1.4-2/cardinalmobilesdk.zip" -o cardinalmobile2.1.4-2.zip
+```
+
+For Android you will need to add this to you build.gradle 
+
+```
+repositories {
+    maven {
+        url "https://cardinalcommerce.bintray.com/android"
+        credentials {
+            username 'braintree-team-sdk@cardinalcommerce'
+            password '220cc9476025679c4e5c843666c27d97cfb0f951'
+        }
+    }
+}
 ```
 
 ## Custom Integration

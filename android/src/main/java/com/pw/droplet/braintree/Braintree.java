@@ -6,7 +6,7 @@ import android.util.Log;
 import com.braintreepayments.api.interfaces.BraintreeCancelListener;
 
 import java.io.IOException;
-
+import androidx.appcompat.app.AppCompatActivity;
 import com.squareup.okhttp.MediaType;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
@@ -21,7 +21,6 @@ import com.braintreepayments.api.ThreeDSecure;
 import com.braintreepayments.api.models.ThreeDSecureRequest;
 import com.braintreepayments.api.models.PaymentMethodNonce;
 import com.braintreepayments.api.BraintreeFragment;
-import com.braintreepayments.api.BraintreePaymentActivity;
 import android.app.Activity;
 import com.braintreepayments.api.exceptions.InvalidArgumentException;
 import com.braintreepayments.api.exceptions.BraintreeError;
@@ -40,7 +39,7 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
 
-public class Braintree extends ReactContextBaseJavaModule  implements ActivityEventListener {
+public class Braintree extends ReactContextBaseJavaModule  {
   private static final int PAYMENT_REQUEST = 1706816330;
   private String token;
 
@@ -54,7 +53,6 @@ public class Braintree extends ReactContextBaseJavaModule  implements ActivityEv
 
   public Braintree(ReactApplicationContext reactContext) {
     super(reactContext);
-      reactContext.addActivityEventListener(this);
   }
 
   @Override
@@ -80,12 +78,17 @@ public class Braintree extends ReactContextBaseJavaModule  implements ActivityEv
 Request request = new Request.Builder()
                      .url(url)
                      .build();
+                          Log.d("PAYMENT_REQUEST" ,url);
                      try {
 Response response = client.newCall(request).execute();
-                    
-        this.mBraintreeFragment = BraintreeFragment.newInstance(getCurrentActivity(),  response.body().string());
-         }catch(IOException e){}
-            
+String res = response.body().string();
+                         Log.d("PAYMENT_REQUEST",res);
+        this.mBraintreeFragment = BraintreeFragment.newInstance((AppCompatActivity) getCurrentActivity(),  res);
+           Log.d("PAYMENT_REQUEST", res);
+         }catch(IOException e){
+              Log.e("PAYMENT_REQUEST", "I got an error", e);
+         }
+           
                 this.mBraintreeFragment.addListener(new BraintreeCancelListener() {
             @Override
             public void onCancel(int requestCode) {
@@ -210,8 +213,40 @@ ThreeDSecure.performVerification(this.mBraintreeFragment, cardBuilder, parameter
      Log.d("PAYMENT_REQUEST",parameters.getString("nonce"));
     this.successCallback = successCallback;
     this.errorCallback = errorCallback;
+
+//  .email("test@email.com")
+//     .billingAddress(address);
+//     .nonce(cardNonce.getNonce())
+//     .versionRequested(ThreeDSecureRequest.VERSION_2)
+//     .additionalInformation(additionalInformation);
+
+// ThreeDSecurePostalAddress address = new ThreeDSecurePostalAddress()
+//     .givenName("Jill") // ASCII-printable characters required, else will throw a validation error
+//     .surname("Doe") // ASCII-printable characters required, else will throw a validation error
+//     .phoneNumber("5551234567")
+//     .streetAddress("555 Smith St")
+//     .extendedAddress("#2")
+//     .locality("Chicago")
+//     .region("IL")
+//     .postalCode("12345")
+//     .countryCodeAlpha2("US");
+
+// // For best results, provide as many additional elements as possible.
+// ThreeDSecureAdditionalInformation additionalInformation = new ThreeDSecureAdditionalInformation()
+//     .shippingAddress(address);
+
+// ThreeDSecureRequest threeDSecureRequest = new ThreeDSecureRequest()
+//     .amount("10")
+//     .email("test@email.com")
+//     .billingAddress(address);
+//     .nonce(cardNonce.getNonce())
+//     .versionRequested(ThreeDSecureRequest.VERSION_2)
+//     .additionalInformation(additionalInformation);
+
 ThreeDSecureRequest threeDSecureRequest = new ThreeDSecureRequest()
         .nonce(parameters.getString("nonce"))
+         .email(parameters.getString("email"))
+           .versionRequested(ThreeDSecureRequest.VERSION_2)
         .amount(parameters.getString("amount"));
 
 ThreeDSecure.performVerification(this.mBraintreeFragment, threeDSecureRequest);
@@ -236,34 +271,7 @@ ThreeDSecure.performVerification(this.mBraintreeFragment, threeDSecureRequest);
 
   PayPal.requestOneTimePayment(this.mBraintreeFragment, request);
   }
-  @Override
-  public void onActivityResult(Activity activity, final int requestCode, final int resultCode, final Intent data) {
-    Log.d("PAYMENT_REQUEST","onActivityResult");
-    if (requestCode == PAYMENT_REQUEST) {
-      switch (resultCode) {
-        case Activity.RESULT_OK:
-          PaymentMethodNonce paymentMethodNonce = data.getParcelableExtra(
-            BraintreePaymentActivity.EXTRA_PAYMENT_METHOD_NONCE
-          );
-
-            this.successCallback.invoke(paymentMethodNonce.getNonce());
-          
-          break;
-        case BraintreePaymentActivity.BRAINTREE_RESULT_DEVELOPER_ERROR:
-        case BraintreePaymentActivity.BRAINTREE_RESULT_SERVER_ERROR:
-        case BraintreePaymentActivity.BRAINTREE_RESULT_SERVER_UNAVAILABLE:
-          this.errorCallback.invoke(
-            data.getSerializableExtra(BraintreePaymentActivity.EXTRA_ERROR_MESSAGE)
-          );
-          break;
-        case Activity.RESULT_CANCELED:
-          this.errorCallback.invoke("USER_CANCELLATION");
-          break;
-        default:
-          break;
-      }
-    }
-  }
+  
 
   public void onNewIntent(Intent intent){}
 }
