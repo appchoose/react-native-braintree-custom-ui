@@ -104,7 +104,7 @@ RCT_EXPORT_METHOD(showPayPalViewController: (NSString *)amount callback: (RCTRes
             BTThreeDSecurePostalAddress *address = [BTThreeDSecurePostalAddress new];
             address.givenName =  parameters[@"firstname"]; // ASCII-printable characters required, else will throw a validation error
             address.surname = parameters[@"lastname"]; // ASCII-printable characters required, else will throw a validation error
-            address.phoneNumber = parameters[@"phoneNumber"];
+            address.phoneNumber = parameters[@"phone"];
             address.streetAddress = parameters[@"streetAddress"];
             address.locality = parameters[@"locality"];
             address.region = parameters[@"region"];

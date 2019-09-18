@@ -4,7 +4,6 @@ import java.util.Map;
 import java.util.HashMap;
 import android.util.Log;
 import com.braintreepayments.api.interfaces.BraintreeCancelListener;
-
 import java.io.IOException;
 import androidx.appcompat.app.AppCompatActivity;
 import com.squareup.okhttp.MediaType;
@@ -207,6 +206,7 @@ String res = response.body().string();
     if (parameters.hasKey("extendedAddress"))
       cardBuilder.extendedAddress(parameters.getString("extendedAddress"));
  Log.d("PAYMENT_REQUEST","ICI");
+ 
 ThreeDSecure.performVerification(this.mBraintreeFragment, cardBuilder, parameters.getString("amount"));
     // Card.tokenize(this.mBraintreeFragment, cardBuilder);
   }
@@ -216,39 +216,26 @@ ThreeDSecure.performVerification(this.mBraintreeFragment, cardBuilder, parameter
     this.successCallback = successCallback;
     this.errorCallback = errorCallback;
 
-//  .email("test@email.com")
-//     .billingAddress(address);
-//     .nonce(cardNonce.getNonce())
-//     .versionRequested(ThreeDSecureRequest.VERSION_2)
-//     .additionalInformation(additionalInformation);
 
-// ThreeDSecurePostalAddress address = new ThreeDSecurePostalAddress()
-//     .givenName("Jill") // ASCII-printable characters required, else will throw a validation error
-//     .surname("Doe") // ASCII-printable characters required, else will throw a validation error
-//     .phoneNumber("5551234567")
-//     .streetAddress("555 Smith St")
-//     .extendedAddress("#2")
-//     .locality("Chicago")
-//     .region("IL")
-//     .postalCode("12345")
-//     .countryCodeAlpha2("US");
+ThreeDSecurePostalAddress address = new ThreeDSecurePostalAddress()
+    .givenName(parameters.getString("firstname")) // ASCII-printable characters required, else will throw a validation error
+    .surname(parameters.getString("lastname")) // ASCII-printable characters required, else will throw a validation error
+    .phoneNumber(parameters.getString("phone"))
+    .streetAddress(parameters.getString("streetAddress"))
+    .locality(parameters.getString("locality"))
+    .postalCode(parameters.getString("postalCode"));
 
-// // For best results, provide as many additional elements as possible.
-// ThreeDSecureAdditionalInformation additionalInformation = new ThreeDSecureAdditionalInformation()
-//     .shippingAddress(address);
+// For best results, provide as many additional elements as possible.
+ThreeDSecureAdditionalInformation additionalInformation = new ThreeDSecureAdditionalInformation()
+    .shippingAddress(address);
 
-// ThreeDSecureRequest threeDSecureRequest = new ThreeDSecureRequest()
-//     .amount("10")
-//     .email("test@email.com")
-//     .billingAddress(address);
-//     .nonce(cardNonce.getNonce())
-//     .versionRequested(ThreeDSecureRequest.VERSION_2)
-//     .additionalInformation(additionalInformation);
 
 ThreeDSecureRequest threeDSecureRequest = new ThreeDSecureRequest()
         .nonce(parameters.getString("nonce"))
          .email(parameters.getString("email"))
+         .billingAddress(address);
            .versionRequested(ThreeDSecureRequest.VERSION_2)
+           .additionalInformation(additionalInformation);
         .amount(parameters.getString("amount"));
 
 ThreeDSecure.performVerification(this.mBraintreeFragment, threeDSecureRequest);
@@ -280,20 +267,17 @@ ThreeDSecure.performVerification(this.mBraintreeFragment, threeDSecureRequest);
     //   switch (resultCode) {
     //     case Activity.RESULT_OK:
     //       PaymentMethodNonce paymentMethodNonce = data.getParcelableExtra(
-    //         BraintreePaymentActivity.EXTRA_PAYMENT_METHOD_NONCE
+    //         DropInActivity.EXTRA_PAYMENT_METHOD_NONCE
     //       );
 
-    //       if (this.threeDSecureOptions != null) {
-    //         ThreeDSecure.performVerification(this.mBraintreeFragment, paymentMethodNonce.getNonce(), String.valueOf(this.threeDSecureOptions.getDouble("amount")));
-    //       } else {
     //         this.successCallback.invoke(paymentMethodNonce.getNonce());
-    //       }
+    
     //       break;
-    //     case BraintreePaymentActivity.BRAINTREE_RESULT_DEVELOPER_ERROR:
-    //     case BraintreePaymentActivity.BRAINTREE_RESULT_SERVER_ERROR:
-    //     case BraintreePaymentActivity.BRAINTREE_RESULT_SERVER_UNAVAILABLE:
+    //     case DropInActivity.BRAINTREE_RESULT_DEVELOPER_ERROR:
+    //     case DropInActivity.BRAINTREE_RESULT_SERVER_ERROR:
+    //     case DropInActivity.BRAINTREE_RESULT_SERVER_UNAVAILABLE:
     //       this.errorCallback.invoke(
-    //         data.getSerializableExtra(BraintreePaymentActivity.EXTRA_ERROR_MESSAGE)
+    //         data.getSerializableExtra(DropInActivity.EXTRA_ERROR_MESSAGE)
     //       );
     //       break;
     //     case Activity.RESULT_CANCELED:
