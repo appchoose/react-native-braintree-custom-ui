@@ -74,7 +74,6 @@ public class Braintree extends ReactContextBaseJavaModule   {
   @ReactMethod
   public void setup(final String url, final Callback successCallback, final Callback errorCallback) {
   try {
-     Log.d("PAYMENT_REQUEST",url);
   OkHttpClient client = new OkHttpClient();
 client.setConnectTimeout(15, TimeUnit.SECONDS); // connect timeout
 client.setReadTimeout(15, TimeUnit.SECONDS);    // socket timeout
@@ -85,7 +84,6 @@ Request request = new Request.Builder()
 Response response = client.newCall(request).execute();
 String res = response.body().string();
         this.mBraintreeFragment = BraintreeFragment.newInstance((AppCompatActivity) getCurrentActivity(),  res);
-           Log.d("PAYMENT_REQUEST", res);
          }catch(IOException e){
               Log.e("PAYMENT_REQUEST", "I got an error", e);
          }
@@ -99,6 +97,8 @@ String res = response.body().string();
       this.mBraintreeFragment.addListener(new PaymentMethodNonceCreatedListener() {
         @Override
         public void onPaymentMethodNonceCreated(PaymentMethodNonce paymentMethodNonce) {
+
+  if (paymentMethodNonce instanceof CardNonce) {
             CardNonce cardNonce = (CardNonce) paymentMethodNonce;
             if (!cardNonce.getThreeDSecureInfo().isLiabilityShiftPossible()) {
               nonceErrorCallback("3DSECURE_NOT_ABLE_TO_SHIFT_LIABILITY");
@@ -107,6 +107,9 @@ String res = response.body().string();
             } else {
               nonceCallback(paymentMethodNonce.getNonce());
             }
+          } else {
+            nonceCallback(paymentMethodNonce.getNonce());
+          }
         }
       });
       
@@ -208,7 +211,6 @@ ThreeDSecure.performVerification(this.mBraintreeFragment, cardBuilder, parameter
   }
   @ReactMethod
   public void check3DSecure(final ReadableMap parameters, final Callback successCallback, final Callback errorCallback) {
-    Log.d("PAYMENT_REQUEST",parameters.getString("nonce"));
     this.successCallback = successCallback;
     this.errorCallback = errorCallback;
 

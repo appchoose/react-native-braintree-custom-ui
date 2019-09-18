@@ -2,6 +2,7 @@
     package="com.pw.droplet.braintree">
     <uses-permission android:name="android.permission.INTERNET" />
     <application android:allowBackup="true" android:label="@string/app_name">
+    <activity android:name="com.braintreepayments.api.threedsecure.ThreeDSecureWebViewActivity" />
       <activity android:name="com.braintreepayments.api.BraintreeBrowserSwitchActivity"
         android:launchMode="singleTask">
         <intent-filter>
