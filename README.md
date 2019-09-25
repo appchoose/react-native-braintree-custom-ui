@@ -4,6 +4,11 @@
 An effort to update https://github.com/kraffslol/react-native-braintree-xplat.
 Use Braintree Android SDK V3 & IOS V4, with 3DS 2.
 
+Required RN 0.60+ for auto linking on iOS.
+
+TODO : 
+- Currency as a parameter
+
 ## Installation
 
 Run `yarn install react-native-braintree-custom-ui`
