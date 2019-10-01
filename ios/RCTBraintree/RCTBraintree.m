@@ -151,8 +151,9 @@ RCT_EXPORT_METHOD(check3DSecure: (NSDictionary *)parameters callback: (RCTRespon
 }
 
 
-RCT_EXPORT_METHOD(getCardNonce: (NSMutableDictionary *)parameters callback: (RCTResponseSenderBlock)callback)
+RCT_EXPORT_METHOD(getCardNonce: (NSDictionary *)params callback: (RCTResponseSenderBlock)callback)
 {
+    NSMutableDictionary *parameters = [params mutableCopy];
     BTCardClient *cardClient = [[BTCardClient alloc] initWithAPIClient: self.braintreeClient];
     BTCard *card =  [[BTCard alloc] initWithNumber:parameters[@"number"]
                                    expirationMonth:parameters[@"expirationMonth"]
