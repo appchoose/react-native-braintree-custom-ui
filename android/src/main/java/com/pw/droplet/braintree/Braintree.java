@@ -7,11 +7,12 @@ import java.util.concurrent.TimeUnit;
 import com.braintreepayments.api.interfaces.BraintreeCancelListener;
 import java.io.IOException;
 import androidx.appcompat.app.AppCompatActivity;
-import com.squareup.okhttp.MediaType;
-import com.squareup.okhttp.OkHttpClient;
-import com.squareup.okhttp.Request;
-import com.squareup.okhttp.RequestBody;
-import com.squareup.okhttp.Response;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.OkHttpClient.Builder;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 import com.google.gson.Gson;
 import android.os.Bundle;
@@ -73,10 +74,13 @@ public class Braintree extends ReactContextBaseJavaModule   {
 
   @ReactMethod
   public void setup(final String url, final Callback successCallback, final Callback errorCallback) {
-  try {
-  OkHttpClient client = new OkHttpClient();
-client.setConnectTimeout(15, TimeUnit.SECONDS); // connect timeout
-client.setReadTimeout(15, TimeUnit.SECONDS);    // socket timeout
+ 
+
+OkHttpClient client = new OkHttpClient.newBuilder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .build();
 Request request = new Request.Builder()
                      .url(url)
                      .build();
@@ -87,7 +91,8 @@ String res = response.body().string();
          }catch(IOException e){
               Log.e("PAYMENT_REQUEST", "I got an error", e);
          }
-           
+          if(this.mBraintreeFragment instanceof BraintreeFragment){
+             try {
                 this.mBraintreeFragment.addListener(new BraintreeCancelListener() {
             @Override
             public void onCancel(int requestCode) {
@@ -158,6 +163,7 @@ String res = response.body().string();
               Log.e("PAYMENT_REQUEST", "I got an error", e);
       errorCallback.invoke(e.getMessage());
     }
+  }
   }
 
   @ReactMethod
