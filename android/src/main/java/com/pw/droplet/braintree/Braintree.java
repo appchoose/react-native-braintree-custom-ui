@@ -74,9 +74,9 @@ public class Braintree extends ReactContextBaseJavaModule   {
 
   @ReactMethod
   public void setup(final String url, final Callback successCallback, final Callback errorCallback) {
- 
-
-OkHttpClient client = new OkHttpClient.newBuilder()
+ String res  = "";
+try {
+OkHttpClient client = new OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
@@ -84,15 +84,22 @@ OkHttpClient client = new OkHttpClient.newBuilder()
 Request request = new Request.Builder()
                      .url(url)
                      .build();
-                     try {
+                   
 Response response = client.newCall(request).execute();
-String res = response.body().string();
-        this.mBraintreeFragment = BraintreeFragment.newInstance((AppCompatActivity) getCurrentActivity(),  res);
-         }catch(IOException e){
+
+res= response.body().string();
+   }catch(IOException e){
               Log.e("PAYMENT_REQUEST", "I got an error", e);
+              errorCallback.invoke(e.getMessage());
+         }
+try{
+        this.mBraintreeFragment = BraintreeFragment.newInstance((AppCompatActivity) getCurrentActivity(),  res);
+         }catch(InvalidArgumentException e){
+              Log.e("PAYMENT_REQUEST", "I got an error", e);
+              errorCallback.invoke(e.getMessage());
          }
           if(this.mBraintreeFragment instanceof BraintreeFragment){
-             try {
+            //  try {
                 this.mBraintreeFragment.addListener(new BraintreeCancelListener() {
             @Override
             public void onCancel(int requestCode) {
@@ -159,10 +166,10 @@ String res = response.body().string();
       });
       this.setToken(token);
       successCallback.invoke(this.getToken()); 
-      } catch (InvalidArgumentException e) {
-              Log.e("PAYMENT_REQUEST", "I got an error", e);
-      errorCallback.invoke(e.getMessage());
-    }
+    //   } catch (IOException e) {
+    //           Log.e("PAYMENT_REQUEST", "I got an error", e);
+    //   errorCallback.invoke(e.getMessage());
+    // }
   }
   }
 
