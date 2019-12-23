@@ -120,7 +120,12 @@ This plugin implements Paypal Checkout https://developers.braintreepayments.com/
 You will need to provide an amount to make it works
 
 ```js
-BTClient.showPayPalViewController(<amount>).then(function(nonce) {
+BTClient.showPayPalViewController(<amount>).then(function({nonce,
+        email,
+        firstName,
+        lastName,
+        billingAddress,
+        shippingAddress}) {
   //payment succeeded, pass nonce to server
 })
 .catch(function(err) {

@@ -24,6 +24,7 @@ import com.braintreepayments.api.models.ThreeDSecureAdditionalInformation;
 import com.braintreepayments.api.models.ThreeDSecurePostalAddress;
 
 import com.braintreepayments.api.models.PaymentMethodNonce;
+import com.braintreepayments.api.models.PayPalAccountNonce;
 import com.braintreepayments.api.BraintreeFragment;
 import android.app.Activity;
 import com.braintreepayments.api.exceptions.InvalidArgumentException;
@@ -36,6 +37,7 @@ import com.braintreepayments.api.models.PayPalRequest;
 import com.braintreepayments.api.interfaces.PaymentMethodNonceCreatedListener;
 import com.braintreepayments.api.interfaces.BraintreeErrorListener;
 import com.braintreepayments.api.models.CardNonce;
+import com.braintreepayments.api.models.PostalAddress;
 import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
@@ -119,8 +121,27 @@ try{
             } else {
               nonceCallback(paymentMethodNonce.getNonce());
             }
-          } else {
-            nonceCallback(paymentMethodNonce.getNonce());
+          }
+          else if (paymentMethodNonce instanceof PayPalAccountNonce) {
+    PayPalAccountNonce payPalAccountNonce = (PayPalAccountNonce)paymentMethodNonce;
+
+    // Access additional information
+    String email = payPalAccountNonce.getEmail();
+    String firstName = payPalAccountNonce.getFirstName();
+    String lastName = payPalAccountNonce.getLastName();
+    String phone = payPalAccountNonce.getPhone();
+
+    // See PostalAddress.java for details
+    PostalAddress billingAddress = payPalAccountNonce.getBillingAddress();
+    PostalAddress shippingAddress = payPalAccountNonce.getShippingAddress();
+      nonceCallback(paymentMethodNonce.getNonce(),
+     email,
+      firstName,
+      lastName,phone,billingAddress,shippingAddress
+      );
+  }
+           else {
+           nonceCallback(paymentMethodNonce.getNonce());
           }
         }
       });
@@ -269,8 +290,8 @@ ThreeDSecureRequest threeDSecureRequest = new ThreeDSecureRequest()
 ThreeDSecure.performVerification(this.mBraintreeFragment, threeDSecureRequest);
   }
 
-  public void nonceCallback(String nonce) {
-    this.successCallback.invoke(nonce);
+  public void nonceCallback(Object... args) {
+    this.successCallback.invoke(args);
   }
 
   public void nonceErrorCallback(String error) {
@@ -284,7 +305,7 @@ ThreeDSecure.performVerification(this.mBraintreeFragment, threeDSecureRequest);
       PayPalRequest request = new PayPalRequest(amount)
     .currencyCode("EUR")
     .intent(PayPalRequest.INTENT_AUTHORIZE);
-
+  // PayPal.requestBillingAgreement(this.mBraintreeFragment, request);
   PayPal.requestOneTimePayment(this.mBraintreeFragment, request);
   }
   

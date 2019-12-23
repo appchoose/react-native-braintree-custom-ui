@@ -72,11 +72,27 @@ RCT_EXPORT_METHOD(showPayPalViewController: (NSString *)amount callback: (RCTRes
         
         [payPalDriver requestOneTimePayment:request completion:^(BTPayPalAccountNonce * _Nullable tokenizedPayPalAccount, NSError * _Nullable error) {
             NSMutableArray *args = @[[NSNull null]];
+            
             if ( error == nil && tokenizedPayPalAccount != nil ) {
-                args = [@[[NSNull null], tokenizedPayPalAccount.nonce, tokenizedPayPalAccount.email, tokenizedPayPalAccount.firstName, tokenizedPayPalAccount.lastName] mutableCopy];
+                NSString *email = tokenizedPayPalAccount.email;
+                          NSString *firstName = tokenizedPayPalAccount.firstName;
+                          NSString *lastName = tokenizedPayPalAccount.lastName;
+                          NSString *phone = tokenizedPayPalAccount.phone;
+
+                          // See BTPostalAddress.h for details
+                          BTPostalAddress *billingAddress = tokenizedPayPalAccount.billingAddress;
+                          BTPostalAddress *shippingAddress = tokenizedPayPalAccount.shippingAddress;
+                
+                args = [@[[NSNull null], tokenizedPayPalAccount.nonce, email, firstName, lastName] mutableCopy];
                 
                 if (tokenizedPayPalAccount.phone != nil) {
-                    [args addObject:tokenizedPayPalAccount.phone];
+                    [args addObject:phone];
+                }
+                if (billingAddress != nil) {
+                    [args addObject:billingAddress];
+                }
+                if (shippingAddress != nil) {
+                    [args addObject:shippingAddress];
                 }
             } else if ( error != nil ) {
                 args = @[error.description, [NSNull null]];

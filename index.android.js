@@ -30,7 +30,19 @@ module.exports = {
   },
   showPayPalViewController(amount) {
     return new Promise(function (resolve, reject) {
-      Braintree.paypalRequest(amount, nonce => resolve(nonce), error => reject(error));
+      Braintree.paypalRequest(amount, (nonce,
+        email,
+        firstName,
+        lastName,
+        billingAddress,
+        shippingAddress) => resolve({
+        nonce,
+        email,
+        firstName,
+        lastName,
+        billingAddress,
+        shippingAddress
+      }), error => reject(error));
     });
   },
 };

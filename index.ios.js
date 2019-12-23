@@ -17,8 +17,15 @@ var Braintree = {
   },
   showPayPalViewController(amount) {
     return new Promise(function (resolve, reject) {
-      RCTBraintree.showPayPalViewController(amount, function (err, nonce) {
-        nonce != null ? resolve(nonce) : reject(err);
+      RCTBraintree.showPayPalViewController(amount, function (err, nonce, email, firstName, lastName, billingAddress, shippingAddress) {
+        nonce != null ? resolve({
+          nonce,
+          email,
+          firstName,
+          lastName,
+          billingAddress,
+          shippingAddress
+        }) : reject(err);
       });
     });
   },
