@@ -10,7 +10,7 @@ Pod::Spec.new do |s|
   s.homepage         = package["homepage"]
   s.authors          = { package["author"]["name"] => package["author"]["email"] }
   s.source           = { :git => s.homepage, :tag => "v#{s.version}" }
-  s.platform         = :ios, "9.0"
+  s.platform         = :ios, "10.0"
   s.source_files     = 'ios/RCTBraintree/**/*.{h,m}'
   s.dependency         'React'
   s.dependency 'Braintree'

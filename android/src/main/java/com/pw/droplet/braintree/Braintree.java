@@ -122,24 +122,24 @@ try{
               nonceCallback(paymentMethodNonce.getNonce());
             }
           }
-          else if (paymentMethodNonce instanceof PayPalAccountNonce) {
-    PayPalAccountNonce payPalAccountNonce = (PayPalAccountNonce)paymentMethodNonce;
+  //         else if (paymentMethodNonce instanceof PayPalAccountNonce) {
+  //   PayPalAccountNonce payPalAccountNonce = (PayPalAccountNonce)paymentMethodNonce;
 
-    // Access additional information
-    String email = payPalAccountNonce.getEmail();
-    String firstName = payPalAccountNonce.getFirstName();
-    String lastName = payPalAccountNonce.getLastName();
-    String phone = payPalAccountNonce.getPhone();
+  //   // Access additional information
+  //   String email = payPalAccountNonce.getEmail();
+  //   String firstName = payPalAccountNonce.getFirstName();
+  //   String lastName = payPalAccountNonce.getLastName();
+  //   String phone = payPalAccountNonce.getPhone();
 
-    // See PostalAddress.java for details
-    PostalAddress billingAddress = payPalAccountNonce.getBillingAddress();
-    PostalAddress shippingAddress = payPalAccountNonce.getShippingAddress();
-      nonceCallback(paymentMethodNonce.getNonce(),
-     email,
-      firstName,
-      lastName,phone,billingAddress,shippingAddress
-      );
-  }
+  //   // See PostalAddress.java for details
+  //   PostalAddress billingAddress = payPalAccountNonce.getBillingAddress();
+  //   PostalAddress shippingAddress = payPalAccountNonce.getShippingAddress();
+  //     nonceCallback(paymentMethodNonce.getNonce(),
+  //    email,
+  //     firstName,
+  //     lastName,phone,billingAddress,shippingAddress
+  //     );
+  // }
            else {
            nonceCallback(paymentMethodNonce.getNonce());
           }
@@ -290,8 +290,11 @@ ThreeDSecureRequest threeDSecureRequest = new ThreeDSecureRequest()
 ThreeDSecure.performVerification(this.mBraintreeFragment, threeDSecureRequest);
   }
 
-  public void nonceCallback(Object... args) {
-    this.successCallback.invoke(args);
+  // public void nonceCallback(Object... args) {
+  //   this.successCallback.invoke(args);
+  // }
+  public void nonceCallback(String nonce) {
+  this.successCallback.invoke(nonce);
   }
 
   public void nonceErrorCallback(String error) {
