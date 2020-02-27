@@ -28,7 +28,7 @@ module.exports = {
         err => reject(err));
     });
   },
-  showPayPalViewController(amount) {
+  showPayPalViewController(amount, shippingrequired) {
     return new Promise(function (resolve, reject) {
       Braintree.paypalRequest(amount, (nonce
         // ,

@@ -61,7 +61,7 @@ RCT_EXPORT_METHOD(setupWithURLScheme:(NSString *)serverUrl urlscheme:(NSString*)
 }
 
 
-RCT_EXPORT_METHOD(showPayPalViewController: (NSString *)amount callback: (RCTResponseSenderBlock) callback)
+RCT_EXPORT_METHOD(showPayPalViewController: (NSString *)amount shippingrequired:(BOOL*)shippingrequired callback: (RCTResponseSenderBlock) callback)
 {
     dispatch_async(dispatch_get_main_queue(), ^{
         
@@ -69,7 +69,8 @@ RCT_EXPORT_METHOD(showPayPalViewController: (NSString *)amount callback: (RCTRes
         payPalDriver.viewControllerPresentingDelegate = self;
         BTPayPalRequest *request= [[BTPayPalRequest alloc] initWithAmount:amount];
         request.currencyCode = @"EUR"; // Optional; see BTPayPalRequest.h for other options
-        
+        request.shippingAddressRequired = shippingrequired;
+        request.shippingAddressEditable = shippingrequired;
         [payPalDriver requestOneTimePayment:request completion:^(BTPayPalAccountNonce * _Nullable tokenizedPayPalAccount, NSError * _Nullable error) {
             NSMutableArray *args = @[[NSNull null]];
             
@@ -80,20 +81,30 @@ RCT_EXPORT_METHOD(showPayPalViewController: (NSString *)amount callback: (RCTRes
                           NSString *phone = tokenizedPayPalAccount.phone;
 
                           // See BTPostalAddress.h for details
-                          BTPostalAddress *billingAddress = tokenizedPayPalAccount.billingAddress;
+                        //   BTPostalAddress *billingAddress = tokenizedPayPalAccount.billingAddress;
                           BTPostalAddress *shippingAddress = tokenizedPayPalAccount.shippingAddress;
                 
-                args = [@[[NSNull null], tokenizedPayPalAccount.nonce, email, firstName, lastName] mutableCopy];
                 
-                if (tokenizedPayPalAccount.phone != nil) {
-                    [args addObject:phone];
-                }
-                if (billingAddress != nil) {
-                    [args addObject:billingAddress];
-                }
-                if (shippingAddress != nil) {
-                    [args addObject:shippingAddress];
-                }
+                
+                // if (tokenizedPayPalAccount.phone != nil) {
+                //     [args addObject:phone];
+                // }
+                // if (billingAddress != nil) {
+                //     [args addObject:billingAddress];
+                // }
+                if (shippingAddress != nil && shippingrequired) {
+
+                      NSMutableDictionary *contentDictionary = [[NSMutableDictionary alloc]init];
+                     [contentDictionary setValue:shippingAddress.streetAddress forKey:@"streetAddress"];
+                     [contentDictionary setValue:shippingAddress.recipientName forKey:@"recipientName"];
+                     [contentDictionary setValue:shippingAddress.postalCode forKey:@"postalCode"];
+                       [contentDictionary setValue:shippingAddress.countryCodeAlpha2 forKey:@"countryCodeAlpha2"];
+                       [contentDictionary setValue:shippingAddress.locality forKey:@"locality"];
+                     [contentDictionary setValue:phone forKey:@"phone"];
+                         args = [@[[NSNull null], tokenizedPayPalAccount.nonce, email, firstName,lastName,contentDictionary] mutableCopy];
+                           }else{
+                               args = [@[[NSNull null], tokenizedPayPalAccount.nonce, email, firstName,lastName] mutableCopy];
+                           }
             } else if ( error != nil ) {
                 args = @[error.description, [NSNull null]];
             }

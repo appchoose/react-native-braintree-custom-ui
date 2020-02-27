@@ -15,16 +15,15 @@ var Braintree = {
       });
     });
   },
-  showPayPalViewController(amount) {
+  showPayPalViewController(amount, shippingrequired) {
     return new Promise(function (resolve, reject) {
-      RCTBraintree.showPayPalViewController(amount, function (err, nonce, email, firstName, lastName, billingAddress, shippingAddress) {
+      RCTBraintree.showPayPalViewController(amount, shippingrequired, function (err, nonce, email, firstName, lastName, shipping) {
         nonce != null ? resolve({
           nonce,
           email,
           firstName,
           lastName,
-          billingAddress,
-          shippingAddress
+          shipping
         }) : reject(err);
       });
     });
