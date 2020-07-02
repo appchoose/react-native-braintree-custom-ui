@@ -223,7 +223,10 @@ try{
       cardBuilder.lastName(parameters.getString("lastname"));
 
     if (parameters.hasKey("countryCode"))
-      cardBuilder.countryCode(parameters.getString("countryCode"));
+      cardBuilder.countryCodeAlpha2(parameters.getString("countryCode"));
+
+    if (parameters.hasKey("countryCodeAlpha2"))
+      cardBuilder.countryCodeAlpha2(parameters.getString("countryCodeAlpha2"));
 
     if (parameters.hasKey("locality"))
       cardBuilder.locality(parameters.getString("locality"));
