@@ -211,7 +211,6 @@ RCT_EXPORT_METHOD(getDeviceData:(NSDictionary *)options
     dispatch_async(dispatch_get_main_queue(), ^{
         NSError *error = nil;
         NSString *deviceData = nil;
-        NSString *environment = options[@"environment"];
         NSString *dataSelector = options[@"dataCollector"];
 
         //Initialize the data collector in V5
