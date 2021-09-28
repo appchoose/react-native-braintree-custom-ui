@@ -8,7 +8,7 @@
 
 #import "RCTBraintree.h"
 #import "Skillz+DeepLinking.h"
-#import <Braintree/Braintree-Swift.h>
+@import Braintree;
 
 @interface RCTBraintree ()
 
