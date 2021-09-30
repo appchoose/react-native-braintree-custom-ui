@@ -8,6 +8,7 @@
 
 #import "RCTBraintree.h"
 #import "Skillz+DeepLinking.h"
+@import Braintree;
 
 @interface RCTBraintree ()
 
@@ -34,7 +35,7 @@
 - (instancetype)init
 {
     if (self = [super init]) {
-        self.dataCollector = [[BTDataCollector alloc] initWithEnvironment:BTDataCollectorEnvironmentProduction];
+        self.dataCollector = [[BTDataCollector alloc] initWithAPIClient:self.braintreeClient];
     }
     return self;
 }
@@ -45,7 +46,7 @@ RCT_EXPORT_METHOD(setupWithClientToken:(NSString *)clientToken
                   callback:(RCTResponseSenderBlock)callback)
 {
     self.URLScheme = [[Skillz skillzInstance] getPaymentsDeepLinkURLScheme];
-    [BTAppSwitch setReturnURLScheme:self.URLScheme];
+    [BTAppContextSwitcher setReturnURLScheme:self.URLScheme];
 
     self.braintreeClient = [[BTAPIClient alloc] initWithAuthorization:clientToken];
 
@@ -64,12 +65,10 @@ RCT_EXPORT_METHOD(payPalRequestOneTimePayment:(NSString *)amount
 {
     dispatch_async(dispatch_get_main_queue(), ^{
         BTPayPalDriver *payPalDriver = [[BTPayPalDriver alloc] initWithAPIClient:self.braintreeClient];
-        payPalDriver.viewControllerPresentingDelegate = self;
-        BTPayPalRequest *request = [[BTPayPalRequest alloc] initWithAmount:amount];
-        request.currencyCode = currencyCode; // Optional; see BTPayPalRequest.h for other options
-
-        [payPalDriver requestOneTimePayment:request
-                                 completion:^(BTPayPalAccountNonce * _Nullable tokenizedPayPalAccount, NSError * _Nullable error) {
+        BTPayPalCheckoutRequest *request = [[BTPayPalCheckoutRequest alloc] initWithAmount:amount];
+        request.currencyCode = currencyCode;
+        
+        [payPalDriver tokenizePayPalAccountWithPayPalRequest:request completion:^(BTPayPalAccountNonce * _Nullable tokenizedPayPalAccount, NSError * _Nullable error) {
             [self handlePayPalResult:tokenizedPayPalAccount error:error callback:callback];
         }];
     });
@@ -81,12 +80,9 @@ RCT_EXPORT_METHOD(payPalRequestBillingAgreement:(NSString *)amount
 {
     dispatch_async(dispatch_get_main_queue(), ^{
         BTPayPalDriver *payPalDriver = [[BTPayPalDriver alloc] initWithAPIClient:self.braintreeClient];
-        payPalDriver.viewControllerPresentingDelegate = self;
-        BTPayPalRequest *request = [[BTPayPalRequest alloc] initWithAmount:amount];
-        request.currencyCode = currencyCode; // Optional; see BTPayPalRequest.h for other options
+        BTPayPalVaultRequest *request = [[BTPayPalVaultRequest alloc] init];
 
-        [payPalDriver requestBillingAgreement:request
-                                   completion:^(BTPayPalAccountNonce * _Nullable tokenizedPayPalAccount, NSError * _Nullable error) {
+        [payPalDriver tokenizePayPalAccountWithPayPalRequest:request completion:^(BTPayPalAccountNonce * _Nullable tokenizedPayPalAccount, NSError * _Nullable error) {
             [self handlePayPalResult:tokenizedPayPalAccount error:error callback:callback];
         }];
     });
@@ -165,11 +161,11 @@ RCT_EXPORT_METHOD(getCardNonce:(NSDictionary *)params
 
 - (BTCard*)createCardWithParameters:(NSMutableDictionary*)parameters
 {
-    BTCard *card = [[BTCard alloc] initWithNumber:parameters[@"number"]
-                                  expirationMonth:parameters[@"expirationMonth"]
-                                   expirationYear:parameters[@"expirationYear"]
-                                              cvv:parameters[@"cvv"]];
-
+    BTCard *card = [[BTCard alloc] init];
+    card.number = parameters[@"number"];
+    card.expirationMonth = parameters[@"expirationMonth"];
+    card.expirationYear = parameters[@"expirationYear"];
+    card.cvv = parameters[@"cvv"];
     card.postalCode = parameters[@"postalCode"];
 
     if (parameters[@"cardholderName"] != nil) {
@@ -215,23 +211,16 @@ RCT_EXPORT_METHOD(getDeviceData:(NSDictionary *)options
     dispatch_async(dispatch_get_main_queue(), ^{
         NSError *error = nil;
         NSString *deviceData = nil;
-        NSString *environment = options[@"environment"];
         NSString *dataSelector = options[@"dataCollector"];
 
-        //Initialize the data collector and specify environment
-        if ([environment isEqualToString:@"development"]) {
-            self.dataCollector = [[BTDataCollector alloc]  initWithEnvironment:BTDataCollectorEnvironmentDevelopment];
-        } else if ([environment isEqualToString:@"qa"]) {
-            self.dataCollector = [[BTDataCollector alloc] initWithEnvironment:BTDataCollectorEnvironmentQA];
-        } else if ([environment isEqualToString:@"sandbox"]) {
-            self.dataCollector = [[BTDataCollector alloc] initWithEnvironment:BTDataCollectorEnvironmentSandbox];
-        }
-
+        //Initialize the data collector in V5
+        self.dataCollector = [[BTDataCollector alloc] initWithAPIClient: self.braintreeClient];
+        
         //Data collection methods
-        if ([dataSelector isEqualToString:@"card"]) {
-            deviceData = [self.dataCollector collectCardFraudData];
-        } else if ([dataSelector isEqualToString:@"both"]) {
-            deviceData = [self.dataCollector collectFraudData];
+        if ([dataSelector isEqualToString:@"card"] || [dataSelector isEqualToString:@"both"]) {
+            [self.dataCollector collectDeviceData:^(NSString * _Nonnull deviceData) {
+                deviceData = deviceData;
+            }];
         } else if ([dataSelector isEqualToString:@"paypal"]) {
             deviceData = [PPDataCollector collectPayPalDeviceData];
         } else {
@@ -258,7 +247,7 @@ RCT_EXPORT_METHOD(getDeviceData:(NSDictionary *)options
             options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *)options
 {
     if ([url.scheme localizedCaseInsensitiveCompare:self.URLScheme] == NSOrderedSame) {
-        return [BTAppSwitch handleOpenURL:url options:options];
+        return [BTAppContextSwitcher handleOpenURL:url];
     }
     return NO;
 }
