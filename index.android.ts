@@ -28,34 +28,34 @@ export type DeviceData = string;
 
 class Braintree {
   setup(clientToken: string): Promise<boolean> {
-    return new Promise((resolve: (result: boolean)=>void, reject: (reason: string)=>void) => {
+    return new Promise((resolve: (result: boolean) => void, reject: (reason: string) => void) => {
       NativeBraintree.setup(clientToken,
-        () => resolve(true), 
+        () => resolve(true),
         (error: string) => reject(error)
       );
     });
   }
 
   getPayPalOneTimePaymentNonce(amount: number, currencyCode: string): Promise<PayPalSuccess> {
-    return new Promise((resolve: (result: PayPalSuccess)=>void, reject: (reason: string)=>void) => {
-      NativeBraintree.payPalRequestOneTimePayment(amount, currencyCode, 
-        (payPalSuccess: PayPalSuccess) => resolve(payPalSuccess), 
+    return new Promise((resolve: (result: PayPalSuccess) => void, reject: (reason: string) => void) => {
+      NativeBraintree.payPalRequestOneTimePayment(amount, currencyCode,
+        (payPalSuccess: PayPalSuccess) => resolve(payPalSuccess),
         (error: string) => reject(error)
       );
     });
   }
 
-  getPayPalBillingAgreementNonce(amount: number, currencyCode: string): Promise<PayPalSuccess> {
-    return new Promise((resolve: (result: PayPalSuccess)=>void, reject: (reason: string | null)=>void) => {
-      NativeBraintree.payPalRequestBillingAgreement(amount, currencyCode, 
-        (payPalSuccess: PayPalSuccess) => resolve(payPalSuccess), 
+  getPayPalBillingAgreementNonce(billingAgreementDescription: string): Promise<PayPalSuccess> {
+    return new Promise((resolve: (result: PayPalSuccess) => void, reject: (reason: string | null) => void) => {
+      NativeBraintree.payPalRequestBillingAgreement(billingAgreementDescription,
+        (payPalSuccess: PayPalSuccess) => resolve(payPalSuccess),
         (error: string) => reject(error)
       );
     });
   }
 
   getCardNonce(parameters = {}): Promise<CardNonce> {
-    return new Promise((resolve: (result: CardNonce)=>void, reject:(reason: string | null)=>void) => {
+    return new Promise((resolve: (result: CardNonce) => void, reject: (reason: string | null) => void) => {
       NativeBraintree.getCardNonce(
         parameters,
         (nonce: CardNonce) => resolve(nonce),
@@ -65,7 +65,7 @@ class Braintree {
   }
 
   getDeviceData(options = {}): Promise<DeviceData> {
-    return new Promise((resolve: (result: DeviceData)=>void, reject:(reason: string)=>void) => {
+    return new Promise((resolve: (result: DeviceData) => void, reject: (reason: string) => void) => {
       NativeBraintree.getDeviceData(
         options,
         (deviceData: string) => resolve(deviceData),

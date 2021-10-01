@@ -74,13 +74,13 @@ RCT_EXPORT_METHOD(payPalRequestOneTimePayment:(NSString *)amount
     });
 }
 
-RCT_EXPORT_METHOD(payPalRequestBillingAgreement:(NSString *)amount
-                  currencyCode:(NSString *) currencyCode
+RCT_EXPORT_METHOD(payPalRequestBillingAgreement:(NSString *)billingAgreementDescription
                   callback:(RCTResponseSenderBlock) callback)
 {
     dispatch_async(dispatch_get_main_queue(), ^{
         BTPayPalDriver *payPalDriver = [[BTPayPalDriver alloc] initWithAPIClient:self.braintreeClient];
         BTPayPalVaultRequest *request = [[BTPayPalVaultRequest alloc] init];
+        request.billingAgreementDescription = billingAgreementDescription;
 
         [payPalDriver tokenizePayPalAccountWithPayPalRequest:request completion:^(BTPayPalAccountNonce * _Nullable tokenizedPayPalAccount, NSError * _Nullable error) {
             [self handlePayPalResult:tokenizedPayPalAccount error:error callback:callback];

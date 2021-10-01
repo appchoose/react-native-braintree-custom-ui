@@ -1,25 +1,29 @@
 package com.pw.droplet.braintree;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.util.Log;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.braintreepayments.api.BraintreeFragment;
+import com.braintreepayments.api.BraintreeClient;
 import com.braintreepayments.api.Card;
+import com.braintreepayments.api.CardClient;
+import com.braintreepayments.api.CardNonce;
+import com.braintreepayments.api.CardTokenizeCallback;
+import com.braintreepayments.api.Configuration;
+import com.braintreepayments.api.ConfigurationCallback;
 import com.braintreepayments.api.DataCollector;
-import com.braintreepayments.api.PayPal;
-import com.braintreepayments.api.exceptions.BraintreeError;
-import com.braintreepayments.api.exceptions.ErrorWithResponse;
-import com.braintreepayments.api.interfaces.BraintreeCancelListener;
-import com.braintreepayments.api.interfaces.BraintreeErrorListener;
-import com.braintreepayments.api.interfaces.BraintreeResponseListener;
-import com.braintreepayments.api.interfaces.PaymentMethodNonceCreatedListener;
-import com.braintreepayments.api.models.CardBuilder;
-import com.braintreepayments.api.models.PayPalAccountNonce;
-import com.braintreepayments.api.models.PayPalRequest;
-import com.braintreepayments.api.models.PaymentMethodNonce;
-import com.braintreepayments.api.models.PostalAddress;
+import com.braintreepayments.api.DataCollectorCallback;
+import com.braintreepayments.api.PayPalAccountNonce;
+import com.braintreepayments.api.PayPalCheckoutRequest;
+import com.braintreepayments.api.PayPalClient;
+import com.braintreepayments.api.PayPalFlowStartedCallback;
+import com.braintreepayments.api.PayPalPaymentIntent;
+import com.braintreepayments.api.PayPalRequest;
+import com.braintreepayments.api.PayPalVaultRequest;
+import com.braintreepayments.api.PostalAddress;
 import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
@@ -32,18 +36,20 @@ import com.google.gson.GsonBuilder;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 
 public class Braintree extends ReactContextBaseJavaModule {
     private static final String TAG = "BraintreeRNModule";
     private String token;
 
-    private Callback successCallback;
-    private Callback errorCallback;
+    private Callback payPalSuccessCallback;
+    private Callback payPalErrorCallback;
 
-    private BraintreeFragment mBraintreeFragment;
+    private BraintreeClient braintreeClient;
+    private DataCollector dataCollector;
+    private PayPalClient payPalClient;
 
     public Braintree(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -54,6 +60,14 @@ public class Braintree extends ReactContextBaseJavaModule {
         return "Braintree";
     }
 
+    /**
+     * During your payment activity's onResume, get the PayPalClient and call onBrowserSwitchResult
+     * @return stored PayPalClient
+     */
+    public PayPalClient getPayPalClient() {
+        return this.payPalClient;
+    }
+
     public String getToken() {
         return this.token;
     }
@@ -62,184 +76,194 @@ public class Braintree extends ReactContextBaseJavaModule {
         this.token = token;
     }
 
-    private void cleanupBraintreeFragment() {
-        if (this.mBraintreeFragment == null) {
-            return;
-        }
+    /**
+     * PayPal-specific success callback. Since now the result of PayPal comes during onResume of
+     * your own activity, you need to retain an instance of this module on your payment activity
+     * and invoke this callback from there
+     *
+     * @param nonce the PayPalAccountNonce returned
+     */
+    public void invokePayPalSuccessCallback(PayPalAccountNonce nonce) {
+        if (this.payPalSuccessCallback != null) {
+            WritableNativeMap map = new WritableNativeMap();
+            map.putString("nonce", nonce.getString());
+            map.putString("firstName", nonce.getFirstName());
+            map.putString("lastName", nonce.getLastName());
 
-        this.mBraintreeFragment.removeListener(mCancelListener);
-        this.mBraintreeFragment.removeListener(mPaymentNonceCreatedListener);
-        this.mBraintreeFragment.removeListener(mErrorListener);
-        this.mBraintreeFragment = null;
+            if (nonce.getBillingAddress() != null && nonce.getBillingAddress().getPostalCode() != null) {
+                map.putMap("billingAddress", getPayPalAddressMap(nonce.getBillingAddress()));
+            }
+
+            if (nonce.getShippingAddress() != null && nonce.getShippingAddress().getPostalCode() != null) {
+                map.putMap("shippingAddress", getPayPalAddressMap(nonce.getShippingAddress()));
+            }
+
+            this.payPalSuccessCallback.invoke(map);
+        } else {
+            Log.e(TAG, "PayPal Success Callback is null");
+        }
+        this.payPalErrorCallback = null;
+        this.payPalSuccessCallback = null;
+    }
+
+    /**
+     * PayPal-specific error callback. Invoke this if during onBrowserSwitchResult the error object is not null.
+     * @param error exception during PayPal checkout
+     */
+    public void invokePayPalErrorCallback(Exception error) {
+        if (this.payPalErrorCallback != null) {
+            this.payPalErrorCallback.invoke(error.toString());
+        } else {
+            Log.e(TAG, "PayPal Error Callback is null");
+        }
+        this.payPalErrorCallback = null;
+        this.payPalSuccessCallback = null;
     }
 
     @ReactMethod
     public void setup(final String token, final Callback successCallback, final Callback errorCallback) {
-        this.cleanupBraintreeFragment();
-
         try {
             this.setToken(token);
-            this.mBraintreeFragment = BraintreeFragment.newInstance((AppCompatActivity) getCurrentActivity(), getToken());
+            this.braintreeClient = new BraintreeClient(Objects.requireNonNull(getCurrentActivity()), getToken());
+            this.dataCollector = new DataCollector(this.braintreeClient);
+            this.braintreeClient.getConfiguration(new ConfigurationCallback() {
+                @Override
+                public void onResult(@androidx.annotation.Nullable Configuration configuration, @androidx.annotation.Nullable Exception error) {
+                    if (error != null) {
+                        errorCallback.invoke(error.toString());
+                    } else {
+                        successCallback.invoke();
+                    }
+                }
+            });
         } catch (Exception e) {
             errorCallback.invoke(e.getMessage());
-            return;
-        }
-
-        if (this.mBraintreeFragment != null) {
-            this.mBraintreeFragment.addListener(mCancelListener);
-            this.mBraintreeFragment.addListener(mPaymentNonceCreatedListener);
-            this.mBraintreeFragment.addListener(mErrorListener);
-            successCallback.invoke();
         }
     }
 
     @ReactMethod
     public void getCardNonce(final ReadableMap parameters, final Callback successCallback, final Callback errorCallback) {
-        this.successCallback = successCallback;
-        this.errorCallback = errorCallback;
-
-        CardBuilder cardBuilder = new CardBuilder()
-                .validate(false);
+        Card card = new Card();
+        card.setShouldValidate(false);
 
         if (parameters.hasKey("number")) {
-            cardBuilder.cardNumber(parameters.getString("number"));
+            card.setNumber(parameters.getString("number"));
         }
 
         if (parameters.hasKey("cvv")) {
-            cardBuilder.cvv(parameters.getString("cvv"));
+            card.setCvv(parameters.getString("cvv"));
         }
 
         if (parameters.hasKey("expirationDate")) {
-            cardBuilder.expirationDate(parameters.getString("expirationDate"));
+            card.setExpirationDate(parameters.getString("expirationDate"));
         } else {
             if (parameters.hasKey("expirationMonth")) {
-                cardBuilder.expirationMonth(parameters.getString("expirationMonth"));
+                card.setExpirationMonth((parameters.getString("expirationMonth")));
             }
 
             if (parameters.hasKey("expirationYear")) {
-                cardBuilder.expirationYear(parameters.getString("expirationYear"));
+                card.setExpirationYear(parameters.getString("expirationYear"));
             }
         }
 
         if (parameters.hasKey("cardholderName")) {
-            cardBuilder.cardholderName(parameters.getString("cardholderName"));
+            card.setCardholderName(parameters.getString("cardholderName"));
         }
 
         if (parameters.hasKey("firstName")) {
-            cardBuilder.firstName(parameters.getString("firstName"));
+            card.setFirstName(parameters.getString("firstName"));
         }
 
         if (parameters.hasKey("lastName")) {
-            cardBuilder.lastName(parameters.getString("lastName"));
+            card.setLastName(parameters.getString("lastName"));
         }
 
         if (parameters.hasKey("countryCode")) {
-            cardBuilder.countryCode(parameters.getString("countryCode"));
+            card.setCountryCode(parameters.getString("countryCode"));
         }
 
         if (parameters.hasKey("locality")) {
-            cardBuilder.locality(parameters.getString("locality"));
+            card.setLocality(parameters.getString("locality"));
         }
 
         if (parameters.hasKey("postalCode")) {
-            cardBuilder.postalCode(parameters.getString("postalCode"));
+            card.setPostalCode(parameters.getString("postalCode"));
         }
 
         if (parameters.hasKey("region")) {
-            cardBuilder.region(parameters.getString("region"));
+            card.setRegion(parameters.getString("region"));
         }
 
         if (parameters.hasKey("streetAddress")) {
-            cardBuilder.streetAddress(parameters.getString("streetAddress"));
+            card.setStreetAddress(parameters.getString("streetAddress"));
         }
 
         if (parameters.hasKey("extendedAddress")) {
-            cardBuilder.extendedAddress(parameters.getString("extendedAddress"));
+            card.setExtendedAddress(parameters.getString("extendedAddress"));
         }
 
-        Card.tokenize(this.mBraintreeFragment, cardBuilder);
+        CardClient cardClient = new CardClient(this.braintreeClient);
+        cardClient.tokenize(card, new CardTokenizeCallback() {
+            @Override
+            public void onResult(@androidx.annotation.Nullable CardNonce cardNonce, @androidx.annotation.Nullable Exception error) {
+                if (error != null) {
+                    errorCallback.invoke(error.toString());
+                }
+                if (cardNonce != null) {
+                    successCallback.invoke(cardNonce.getString());
+                }
+            }
+        });
     }
 
     @ReactMethod
     public void payPalRequestOneTimePayment(final String amount, final String currencyCode, final Callback successCallback, final Callback errorCallback) {
-        PayPal.requestOneTimePayment(this.mBraintreeFragment, getPayPalRequest(amount, currencyCode, successCallback, errorCallback));
+        this.payPalSuccessCallback = successCallback;
+        this.payPalErrorCallback = errorCallback;
+
+        PayPalCheckoutRequest request = new PayPalCheckoutRequest(amount);
+        request.setCurrencyCode(currencyCode);
+        request.setIntent(PayPalPaymentIntent.AUTHORIZE);
+
+        this.tokenizePayPalAccount(request);
     }
 
     @ReactMethod
-    public void payPalRequestBillingAgreement(final String amount, final String currencyCode, final Callback successCallback, final Callback errorCallback) {
-        PayPal.requestBillingAgreement(this.mBraintreeFragment, getPayPalRequest(null, currencyCode, successCallback, errorCallback));
+    public void payPalRequestBillingAgreement(final String billingAgreementDescription, final Callback successCallback, final Callback errorCallback) {
+        this.payPalSuccessCallback = successCallback;
+        this.payPalErrorCallback = errorCallback;
+
+        PayPalVaultRequest request = new PayPalVaultRequest();
+        request.setBillingAgreementDescription(billingAgreementDescription);
+
+        this.tokenizePayPalAccount(request);
+    }
+
+    private void tokenizePayPalAccount(PayPalRequest request) {
+        try {
+            payPalClient = new PayPalClient(this.braintreeClient);
+            payPalClient.tokenizePayPalAccount((AppCompatActivity) Objects.requireNonNull(getCurrentActivity()), request, this.payPalFlowStartedCallback);
+        } catch (Exception error) {
+            invokePayPalErrorCallback(error);
+        }
     }
 
     @ReactMethod
     public void getDeviceData(final ReadableMap options, final Callback successCallback, final Callback errorCallback) {
-        final String collectorType = options.hasKey("dataCollector") ? options.getString("dataCollector") : null;
-
-        final BraintreeResponseListener<String> listener = new BraintreeResponseListener<String>() {
-            @Override
-            public void onResponse(String deviceData) {
-                successCallback.invoke(deviceData);
-            }
-        };
-
-        if (collectorType != null) {
-            switch (collectorType) {
-                case "card":
-                case "both":
-                    DataCollector.collectDeviceData(this.mBraintreeFragment, listener);
-                    break;
-                case "paypal":
-                    DataCollector.collectPayPalDeviceData(this.mBraintreeFragment, listener);
-                    break;
-                default:
-                    errorCallback.invoke("Invalid data collector");
-            }
-        } else {
-            errorCallback.invoke("Invalid data collector");
+        try {
+            this.dataCollector.collectDeviceData(Objects.requireNonNull(getCurrentActivity()), new DataCollectorCallback() {
+                @Override
+                public void onResult(@androidx.annotation.Nullable String deviceData, @androidx.annotation.Nullable Exception error) {
+                    if (error != null) {
+                        errorCallback.invoke(error.toString());
+                    } else {
+                        successCallback.invoke(deviceData);
+                    }
+                }
+            });
+        } catch (Exception error) {
+            errorCallback.invoke(error.toString());
         }
-    }
-
-    private void payPalNonceCallback(PayPalAccountNonce payPalAccountNonce) {
-        WritableNativeMap map = new WritableNativeMap();
-        map.putString("nonce", payPalAccountNonce.getNonce());
-        map.putString("firstName", payPalAccountNonce.getFirstName());
-        map.putString("lastName", payPalAccountNonce.getLastName());
-
-        if (payPalAccountNonce.getBillingAddress() != null) {
-            map.putMap("billingAddress", getPayPalAddressMap(payPalAccountNonce.getBillingAddress()));
-        }
-
-        if (payPalAccountNonce.getShippingAddress() != null) {
-            map.putMap("shippingAddress", getPayPalAddressMap(payPalAccountNonce.getShippingAddress()));
-        }
-
-        this.successCallback.invoke(map);
-    }
-
-    private void nonceCallback(String nonce) {
-        if (this.successCallback != null) {
-            this.successCallback.invoke(nonce);
-            this.successCallback = null;
-        } else {
-            Log.e(TAG, "Braintree successCallback is null!");
-        }
-    }
-
-    private void nonceErrorCallback(String error) {
-        if (this.errorCallback != null) {
-            this.errorCallback.invoke(error);
-            this.errorCallback = null;
-        } else {
-            Log.e(TAG, "Braintree errorCallback is null!");
-        }
-    }
-
-    private PayPalRequest getPayPalRequest(final @Nullable String amount, final String currencyCode, final Callback successCallback, final Callback errorCallback) {
-        this.successCallback = successCallback;
-        this.errorCallback = errorCallback;
-        PayPalRequest request = amount != null ? new PayPalRequest(amount) : new PayPalRequest();
-        return request
-                .currencyCode(currencyCode)
-                .intent(PayPalRequest.INTENT_AUTHORIZE);
     }
 
     private WritableMap getPayPalAddressMap(PostalAddress address) {
@@ -254,61 +278,11 @@ public class Braintree extends ReactContextBaseJavaModule {
         return map;
     }
 
-    private BraintreeCancelListener mCancelListener = new BraintreeCancelListener() {
+    private PayPalFlowStartedCallback payPalFlowStartedCallback = new PayPalFlowStartedCallback() {
         @Override
-        public void onCancel(int requestCode) {
-            nonceErrorCallback("USER_CANCELLATION");
-        }
-    };
-
-    private PaymentMethodNonceCreatedListener mPaymentNonceCreatedListener = new PaymentMethodNonceCreatedListener() {
-        @Override
-        public void onPaymentMethodNonceCreated(PaymentMethodNonce paymentMethodNonce) {
-            if (paymentMethodNonce instanceof PayPalAccountNonce) {
-                payPalNonceCallback((PayPalAccountNonce)paymentMethodNonce);
-            } else {
-                nonceCallback(paymentMethodNonce.getNonce());
-            }
-        }
-    };
-
-    private BraintreeErrorListener mErrorListener = new BraintreeErrorListener() {
-        @Override
-        public void onError(Exception error) {
-            if (error instanceof ErrorWithResponse) {
-                ErrorWithResponse errorWithResponse = (ErrorWithResponse) error;
-                BraintreeError cardErrors = errorWithResponse.errorFor("creditCard");
-                if (cardErrors != null) {
-                    Gson gson = new GsonBuilder().create();
-                    final Map<String, String> errors = new HashMap<>();
-                    BraintreeError numberError = cardErrors.errorFor("number");
-                    BraintreeError cvvError = cardErrors.errorFor("cvv");
-                    BraintreeError expirationDateError = cardErrors.errorFor("expirationDate");
-                    BraintreeError postalCode = cardErrors.errorFor("postalCode");
-
-                    if (numberError != null && numberError.getMessage() != null) {
-                        errors.put("card_number", numberError.getMessage());
-                    }
-
-                    if (cvvError != null && cvvError.getMessage() != null) {
-                        errors.put("cvv", cvvError.getMessage());
-                    }
-
-                    if (expirationDateError != null && expirationDateError.getMessage() != null) {
-                        errors.put("expiration_date", expirationDateError.getMessage());
-                    }
-
-                    if (postalCode != null && postalCode.getMessage() != null) {
-                        errors.put("postal_code", postalCode.getMessage());
-                    }
-
-                    nonceErrorCallback(gson.toJson(errors));
-                } else {
-                    nonceErrorCallback(errorWithResponse.getErrorResponse());
-                }
-            } else {
-                nonceErrorCallback(error.toString());
-                Log.e(TAG, "Unknown Braintree exception", error);
+        public void onResult(@Nullable Exception error) {
+            if (error != null) {
+                invokePayPalErrorCallback(error);
             }
         }
     };
