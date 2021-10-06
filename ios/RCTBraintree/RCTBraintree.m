@@ -130,7 +130,7 @@ RCT_EXPORT_METHOD(venmoRequestMultiUseAgreement:(NSString *)agreement
                   callback:(RCTResponseSenderBlock) callback)
 {
     dispatch_async(dispatch_get_main_queue(), ^{
-        BTVenmoDriver *venmoDriver = [[BTVenmoDriver alloc] initWithAPIClient:self.apiClient];
+        BTVenmoDriver *venmoDriver = [[BTVenmoDriver alloc] initWithAPIClient:self.braintreeClient];
         BTVenmoRequest *venmoRequest = [[BTVenmoRequest alloc] init];
         venmoRequest.vault = shouldVault;
         venmoRequest.profileID = profileId;
@@ -138,13 +138,13 @@ RCT_EXPORT_METHOD(venmoRequestMultiUseAgreement:(NSString *)agreement
         [venmoDriver tokenizeVenmoAccountWithVenmoRequest:venmoRequest completion:^(BTVenmoAccountNonce * _Nullable venmoAccount, NSError * _Nullable error) {
             NSMutableArray *args = [[NSMutableArray alloc] init];
             if (venmoAccount) {
-                args = @[venmoAccount.nonce, [NSNull null]];
+                [args addObject:venmoAccount.nonce];
             } else if (error) {
-                args = @[error.description, [NSNull null]];
+                [args addObject:error.description];
             }
             callback(args);
         }];
-    })
+    });
 }
 
 RCT_EXPORT_METHOD(getCardNonce:(NSDictionary *)params
