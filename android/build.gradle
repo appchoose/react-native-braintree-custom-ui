@@ -46,7 +46,7 @@ android {
 }
 
 dependencies {
-    implementation 'com.facebook.react:react-native:0.59.10'
+    implementation 'com.facebook.react:react-native:0.61.5'
     implementation 'com.braintreepayments.api:card:4.5.0'
     implementation 'com.braintreepayments.api:data-collector:4.5.0'
     implementation 'com.braintreepayments.api:paypal:4.5.0'

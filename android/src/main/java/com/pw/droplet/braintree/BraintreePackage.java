@@ -14,8 +14,12 @@ public class BraintreePackage implements ReactPackage {
   private Braintree mModuleInstance;
 
   public BraintreePackage() {
-    
+
   }
+
+    public Braintree getModuleInstance() {
+        return mModuleInstance;
+    }
 
   @Override
   public List<NativeModule> createNativeModules(ReactApplicationContext reactContext) {
