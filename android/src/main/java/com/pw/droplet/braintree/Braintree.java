@@ -1,13 +1,13 @@
 package com.pw.droplet.braintree;
 
-import android.app.Activity;
-import android.content.Intent;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.FragmentActivity;
 
 import com.braintreepayments.api.BraintreeClient;
+import com.braintreepayments.api.BrowserSwitchResult;
 import com.braintreepayments.api.Card;
 import com.braintreepayments.api.CardClient;
 import com.braintreepayments.api.CardNonce;
@@ -17,6 +17,7 @@ import com.braintreepayments.api.ConfigurationCallback;
 import com.braintreepayments.api.DataCollector;
 import com.braintreepayments.api.DataCollectorCallback;
 import com.braintreepayments.api.PayPalAccountNonce;
+import com.braintreepayments.api.PayPalBrowserSwitchResultCallback;
 import com.braintreepayments.api.PayPalCheckoutRequest;
 import com.braintreepayments.api.PayPalClient;
 import com.braintreepayments.api.PayPalFlowStartedCallback;
@@ -24,6 +25,7 @@ import com.braintreepayments.api.PayPalPaymentIntent;
 import com.braintreepayments.api.PayPalRequest;
 import com.braintreepayments.api.PayPalVaultRequest;
 import com.braintreepayments.api.PostalAddress;
+import com.braintreepayments.api.UserCanceledException;
 import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
@@ -31,11 +33,7 @@ import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.WritableNativeMap;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 
 import javax.annotation.Nonnull;
@@ -61,70 +59,32 @@ public class Braintree extends ReactContextBaseJavaModule {
     }
 
     /**
-     * During your payment activity's onResume, get the PayPalClient and call onBrowserSwitchResult
-     * @return stored PayPalClient
-     */
-    public PayPalClient getPayPalClient() {
-        return this.payPalClient;
-    }
-
-    public String getToken() {
-        return this.token;
-    }
-
-    public void setToken(String token) {
-        this.token = token;
-    }
-
-    /**
-     * PayPal-specific success callback. Since now the result of PayPal comes during onResume of
-     * your own activity, you need to retain an instance of this module on your payment activity
-     * and invoke this callback from there
+     * Invoke this during onResume of your payment activity. It will call either success or failure callbacks
+     * that were originally passed when calling either {@link #payPalRequestOneTimePayment} or {@link #payPalRequestBillingAgreement}
      *
-     * @param nonce the PayPalAccountNonce returned
+     * @param activity your payment activity
      */
-    public void invokePayPalSuccessCallback(PayPalAccountNonce nonce) {
-        if (this.payPalSuccessCallback != null) {
-            WritableNativeMap map = new WritableNativeMap();
-            map.putString("nonce", nonce.getString());
-            map.putString("firstName", nonce.getFirstName());
-            map.putString("lastName", nonce.getLastName());
-
-            if (nonce.getBillingAddress() != null && nonce.getBillingAddress().getPostalCode() != null) {
-                map.putMap("billingAddress", getPayPalAddressMap(nonce.getBillingAddress()));
-            }
-
-            if (nonce.getShippingAddress() != null && nonce.getShippingAddress().getPostalCode() != null) {
-                map.putMap("shippingAddress", getPayPalAddressMap(nonce.getShippingAddress()));
-            }
-
-            this.payPalSuccessCallback.invoke(map);
-        } else {
-            Log.e(TAG, "PayPal Success Callback is null");
+    public void onPaymentActivityResume(FragmentActivity activity) {
+        BrowserSwitchResult browserSwitchResult = this.braintreeClient.deliverBrowserSwitchResult(activity);
+        if (browserSwitchResult != null) {
+            this.payPalClient.onBrowserSwitchResult(browserSwitchResult, new PayPalBrowserSwitchResultCallback() {
+                @Override
+                public void onResult(@Nullable PayPalAccountNonce payPalAccountNonce, @Nullable Exception error) {
+                    if (error != null) {
+                        invokePayPalErrorCallback(error);
+                    } else if (payPalAccountNonce != null) {
+                        invokePayPalSuccessCallback(payPalAccountNonce);
+                    }
+                }
+            });
         }
-        this.payPalErrorCallback = null;
-        this.payPalSuccessCallback = null;
-    }
-
-    /**
-     * PayPal-specific error callback. Invoke this if during onBrowserSwitchResult the error object is not null.
-     * @param error exception during PayPal checkout
-     */
-    public void invokePayPalErrorCallback(Exception error) {
-        if (this.payPalErrorCallback != null) {
-            this.payPalErrorCallback.invoke(error.toString());
-        } else {
-            Log.e(TAG, "PayPal Error Callback is null");
-        }
-        this.payPalErrorCallback = null;
-        this.payPalSuccessCallback = null;
     }
 
     @ReactMethod
     public void setup(final String token, final Callback successCallback, final Callback errorCallback) {
         try {
-            this.setToken(token);
-            this.braintreeClient = new BraintreeClient(Objects.requireNonNull(getCurrentActivity()), getToken());
+            this.token = token;
+            this.braintreeClient = new BraintreeClient(Objects.requireNonNull(getCurrentActivity()), this.token);
             this.dataCollector = new DataCollector(this.braintreeClient);
             this.braintreeClient.getConfiguration(new ConfigurationCallback() {
                 @Override
@@ -239,15 +199,6 @@ public class Braintree extends ReactContextBaseJavaModule {
         this.tokenizePayPalAccount(request);
     }
 
-    private void tokenizePayPalAccount(PayPalRequest request) {
-        try {
-            payPalClient = new PayPalClient(this.braintreeClient);
-            payPalClient.tokenizePayPalAccount((AppCompatActivity) Objects.requireNonNull(getCurrentActivity()), request, this.payPalFlowStartedCallback);
-        } catch (Exception error) {
-            invokePayPalErrorCallback(error);
-        }
-    }
-
     @ReactMethod
     public void getDeviceData(final ReadableMap options, final Callback successCallback, final Callback errorCallback) {
         try {
@@ -266,6 +217,15 @@ public class Braintree extends ReactContextBaseJavaModule {
         }
     }
 
+    private void tokenizePayPalAccount(PayPalRequest request) {
+        try {
+            payPalClient = new PayPalClient(this.braintreeClient);
+            payPalClient.tokenizePayPalAccount((AppCompatActivity) Objects.requireNonNull(getCurrentActivity()), request, this.payPalFlowStartedCallback);
+        } catch (Exception error) {
+            invokePayPalErrorCallback(error);
+        }
+    }
+
     private WritableMap getPayPalAddressMap(PostalAddress address) {
         WritableNativeMap map = new WritableNativeMap();
         map.putString("recipientName", address.getRecipientName());
@@ -276,6 +236,43 @@ public class Braintree extends ReactContextBaseJavaModule {
         map.putString("postalCode", address.getPostalCode());
         map.putString("region", address.getRegion());
         return map;
+    }
+
+    private void invokePayPalSuccessCallback(PayPalAccountNonce nonce) {
+        if (this.payPalSuccessCallback != null) {
+            WritableNativeMap map = new WritableNativeMap();
+            map.putString("nonce", nonce.getString());
+            map.putString("firstName", nonce.getFirstName());
+            map.putString("lastName", nonce.getLastName());
+
+            if (nonce.getBillingAddress() != null && nonce.getBillingAddress().getPostalCode() != null) {
+                map.putMap("billingAddress", getPayPalAddressMap(nonce.getBillingAddress()));
+            }
+
+            if (nonce.getShippingAddress() != null && nonce.getShippingAddress().getPostalCode() != null) {
+                map.putMap("shippingAddress", getPayPalAddressMap(nonce.getShippingAddress()));
+            }
+
+            this.payPalSuccessCallback.invoke(map);
+        } else {
+            Log.e(TAG, "PayPal Success Callback is null");
+        }
+        this.payPalErrorCallback = null;
+        this.payPalSuccessCallback = null;
+    }
+
+    private void invokePayPalErrorCallback(Exception error) {
+        if (this.payPalErrorCallback != null) {
+            if (error instanceof UserCanceledException) {
+                this.payPalErrorCallback.invoke("USER_CANCELLATION"); // parity with iOS
+            } else {
+                this.payPalErrorCallback.invoke(error.toString());
+            }
+        } else {
+            Log.e(TAG, "PayPal Error Callback is null");
+        }
+        this.payPalErrorCallback = null;
+        this.payPalSuccessCallback = null;
     }
 
     private PayPalFlowStartedCallback payPalFlowStartedCallback = new PayPalFlowStartedCallback() {
