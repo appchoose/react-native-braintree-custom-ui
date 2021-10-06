@@ -24,6 +24,8 @@ export type Address = {
   region: string | null, // state
 };
 
+export type VenmoNonce = string;
+
 export type DeviceData = string;
 
 class Braintree {
@@ -66,6 +68,20 @@ class Braintree {
             billingAddress,
             shippingAddress,
           });
+        } else {
+          reject(err);
+        }
+      });
+    });
+  }
+
+  getVenmoMultiUseAgreementNonce(agreement: string, profileId: string, shouldVault: boolean): Promise<VenmoNonce> {
+    return new Promise((resolve: (result: VenmoNonce) => void, reject: (reason: string | null) => void) => {
+      RCTBraintree.venmoRequestMultiUseAgreement(agreement, profileId, shouldVault, (err: string | null, nonce: string | null) => {
+        if (nonce) {
+          resolve(
+            nonce
+          );
         } else {
           reject(err);
         }
