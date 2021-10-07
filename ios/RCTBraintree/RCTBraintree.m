@@ -141,6 +141,8 @@ RCT_EXPORT_METHOD(venmoRequestMultiUseAgreement:(NSString *)agreement
                 [args addObject:venmoAccount.nonce];
             } else if (error) {
                 [args addObject:error.description];
+            } else { //user cancelled
+                [args addObject:@"USER_CANCELLATION"];
             }
             callback(args);
         }];
