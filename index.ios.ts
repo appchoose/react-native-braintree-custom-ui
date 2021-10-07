@@ -75,9 +75,9 @@ class Braintree {
     });
   }
 
-  getVenmoMultiUseAgreementNonce(agreement: string, profileId: string, shouldVault: boolean): Promise<VenmoNonce> {
+  getVenmoMultiUseAgreementNonce(profileId: string, shouldVault: boolean): Promise<VenmoNonce> {
     return new Promise((resolve: (result: VenmoNonce) => void, reject: (reason: string | null) => void) => {
-      RCTBraintree.venmoRequestMultiUseAgreement(agreement, profileId, shouldVault, (err: string | null, nonce: string | null) => {
+      RCTBraintree.venmoRequestMultiUseAgreement(profileId, shouldVault, (err: string | null, nonce: string | null) => {
         if (nonce) {
           resolve(
             nonce

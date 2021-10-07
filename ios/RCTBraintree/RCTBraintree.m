@@ -124,8 +124,7 @@ RCT_EXPORT_METHOD(payPalRequestBillingAgreement:(NSString *)billingAgreementDesc
     callback(args);
 }
 
-RCT_EXPORT_METHOD(venmoRequestMultiUseAgreement:(NSString *)agreement
-                  profileId:(NSString *) profileId
+RCT_EXPORT_METHOD(venmoRequestMultiUseAgreement:(NSString *)profileId
                   shouldVault:(BOOL) shouldVault
                   callback:(RCTResponseSenderBlock) callback)
 {
@@ -133,8 +132,10 @@ RCT_EXPORT_METHOD(venmoRequestMultiUseAgreement:(NSString *)agreement
         BTVenmoDriver *venmoDriver = [[BTVenmoDriver alloc] initWithAPIClient:self.braintreeClient];
         BTVenmoRequest *venmoRequest = [[BTVenmoRequest alloc] init];
         venmoRequest.vault = shouldVault;
-        venmoRequest.profileID = profileId;
         venmoRequest.paymentMethodUsage = BTVenmoPaymentMethodUsageMultiUse;
+        if([profileId length] != 0) {
+            venmoRequest.profileID = profileId;
+        }
         [venmoDriver tokenizeVenmoAccountWithVenmoRequest:venmoRequest completion:^(BTVenmoAccountNonce * _Nullable venmoAccount, NSError * _Nullable error) {
             NSMutableArray *args = [[NSMutableArray alloc] init];
             if (venmoAccount) {
