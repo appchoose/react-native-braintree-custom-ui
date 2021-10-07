@@ -124,6 +124,32 @@ RCT_EXPORT_METHOD(payPalRequestBillingAgreement:(NSString *)billingAgreementDesc
     callback(args);
 }
 
+RCT_EXPORT_METHOD(venmoRequestMultiUseAgreement:(NSString *)profileId
+                  shouldVault:(BOOL) shouldVault
+                  callback:(RCTResponseSenderBlock) callback)
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        BTVenmoDriver *venmoDriver = [[BTVenmoDriver alloc] initWithAPIClient:self.braintreeClient];
+        BTVenmoRequest *venmoRequest = [[BTVenmoRequest alloc] init];
+        venmoRequest.vault = shouldVault;
+        venmoRequest.paymentMethodUsage = BTVenmoPaymentMethodUsageMultiUse;
+        if([profileId length] != 0) {
+            venmoRequest.profileID = profileId;
+        }
+        [venmoDriver tokenizeVenmoAccountWithVenmoRequest:venmoRequest completion:^(BTVenmoAccountNonce * _Nullable venmoAccount, NSError * _Nullable error) {
+            NSMutableArray *args = [[NSMutableArray alloc] init];
+            if (venmoAccount) {
+                [args addObject:venmoAccount.nonce];
+            } else if (error) {
+                [args addObject:error.description];
+            } else { //user cancelled
+                [args addObject:@"USER_CANCELLATION"];
+            }
+            callback(args);
+        }];
+    });
+}
+
 RCT_EXPORT_METHOD(getCardNonce:(NSDictionary *)params
                   callback:(RCTResponseSenderBlock)callback)
 {
@@ -221,7 +247,7 @@ RCT_EXPORT_METHOD(getDeviceData:(NSDictionary *)options
             [self.dataCollector collectDeviceData:^(NSString * _Nonnull deviceData) {
                 deviceData = deviceData;
             }];
-        } else if ([dataSelector isEqualToString:@"paypal"]) {
+        } else if ([dataSelector isEqualToString:@"paypal"] || [dataSelector isEqualToString:@"venmo"]) {
             deviceData = [PPDataCollector collectPayPalDeviceData];
         } else {
             NSMutableDictionary* details = [NSMutableDictionary dictionary];
