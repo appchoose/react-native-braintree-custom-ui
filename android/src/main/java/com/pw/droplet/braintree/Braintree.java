@@ -26,6 +26,10 @@ import com.braintreepayments.api.PayPalRequest;
 import com.braintreepayments.api.PayPalVaultRequest;
 import com.braintreepayments.api.PostalAddress;
 import com.braintreepayments.api.UserCanceledException;
+import com.braintreepayments.api.VenmoClient;
+import com.braintreepayments.api.VenmoPaymentMethodUsage;
+import com.braintreepayments.api.VenmoRequest;
+import com.braintreepayments.api.VenmoTokenizeAccountCallback;
 import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
@@ -44,10 +48,13 @@ public class Braintree extends ReactContextBaseJavaModule {
 
     private Callback payPalSuccessCallback;
     private Callback payPalErrorCallback;
+    private Callback venmoSuccessCallback;
+    private Callback venmoErrorCallback;
 
     private BraintreeClient braintreeClient;
     private DataCollector dataCollector;
     private PayPalClient payPalClient;
+    private VenmoClient venmoClient;
 
     public Braintree(ReactApplicationContext reactContext) {
         super(reactContext);
@@ -217,6 +224,28 @@ public class Braintree extends ReactContextBaseJavaModule {
         }
     }
 
+    @ReactMethod
+    public void venmoRequestMultiUseAgreement(final String profileId, final boolean shouldVault, final Callback successCallback, final Callback errorCallback){
+        this.venmoSuccessCallback = successCallback;
+        this.venmoErrorCallback = errorCallback;
+
+        VenmoRequest request = new VenmoRequest(VenmoPaymentMethodUsage.MULTI_USE);
+        if (!profileId.isEmpty()){
+            request.setProfileId(profileId);
+        }
+        request.setShouldVault(shouldVault);
+        tokenizeVenmoAccount(request);
+    }
+
+    private void tokenizeVenmoAccount(VenmoRequest request) {
+        try{
+            venmoClient = new VenmoClient(this.braintreeClient);
+            venmoClient.tokenizeVenmoAccount((AppCompatActivity) Objects.requireNonNull(getCurrentActivity()), request, this.venmoTokenizeAccountCallback);
+        }catch (Exception error){
+            invokeVenmoErrorCallback(error);
+        }
+    }
+
     private void tokenizePayPalAccount(PayPalRequest request) {
         try {
             payPalClient = new PayPalClient(this.braintreeClient);
@@ -275,11 +304,34 @@ public class Braintree extends ReactContextBaseJavaModule {
         this.payPalSuccessCallback = null;
     }
 
+    private void invokeVenmoErrorCallback(Exception error){
+        if (this.venmoErrorCallback != null) {
+            if (error instanceof UserCanceledException) {
+                this.venmoErrorCallback.invoke("USER_CANCELLATION"); // parity with iOS
+            } else {
+                this.venmoErrorCallback.invoke(error.toString());
+            }
+        } else {
+            Log.e(TAG, "Venmo Error Callback is null");
+        }
+        this.venmoErrorCallback = null;
+        this.venmoSuccessCallback = null;
+    }
+
     private PayPalFlowStartedCallback payPalFlowStartedCallback = new PayPalFlowStartedCallback() {
         @Override
         public void onResult(@Nullable Exception error) {
             if (error != null) {
                 invokePayPalErrorCallback(error);
+            }
+        }
+    };
+
+    private VenmoTokenizeAccountCallback venmoTokenizeAccountCallback = new VenmoTokenizeAccountCallback() {
+        @Override
+        public void onResult(@Nullable Exception error) {
+            if (error != null){
+                invokeVenmoErrorCallback(error);
             }
         }
     };
