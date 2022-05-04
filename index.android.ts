@@ -54,6 +54,16 @@ class Braintree {
     });
   }
 
+  getVenmoMultiUseAgreementNonce(billingAgreementDescription: string, shouldVault: boolean): Promise<PayPalSuccess> {
+    return new Promise((resolve: (result: PayPalSuccess) => void, reject: (reason: string | null) => void) => {
+      NativeBraintree.venmoRequestMultiUseAgreement(billingAgreementDescription,
+        shouldVault,
+        (payPalSuccess: PayPalSuccess) => resolve(payPalSuccess),
+        (error: string) => reject(error)
+      );
+    });
+  }
+
   getCardNonce(parameters = {}): Promise<CardNonce> {
     return new Promise((resolve: (result: CardNonce) => void, reject: (reason: string | null) => void) => {
       NativeBraintree.getCardNonce(
