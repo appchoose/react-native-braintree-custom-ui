@@ -54,9 +54,9 @@ class Braintree {
     });
   }
 
-  getVenmoMultiUseAgreementNonce(billingAgreementDescription: string, shouldVault: boolean): Promise<PayPalSuccess> {
+  getVenmoMultiUseAgreementNonce(profileId: string, shouldVault: boolean): Promise<PayPalSuccess> {
     return new Promise((resolve: (result: PayPalSuccess) => void, reject: (reason: string | null) => void) => {
-      NativeBraintree.venmoRequestMultiUseAgreement(billingAgreementDescription,
+      NativeBraintree.venmoRequestMultiUseAgreement(profileId,
         shouldVault,
         (payPalSuccess: PayPalSuccess) => resolve(payPalSuccess),
         (error: string) => reject(error)
