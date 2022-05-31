@@ -1,7 +1,10 @@
 package com.pw.droplet.braintree;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.FragmentActivity;
@@ -26,7 +29,10 @@ import com.braintreepayments.api.PayPalRequest;
 import com.braintreepayments.api.PayPalVaultRequest;
 import com.braintreepayments.api.PostalAddress;
 import com.braintreepayments.api.UserCanceledException;
+import com.braintreepayments.api.VenmoAccountNonce;
 import com.braintreepayments.api.VenmoClient;
+import com.braintreepayments.api.VenmoListener;
+import com.braintreepayments.api.VenmoOnActivityResultCallback;
 import com.braintreepayments.api.VenmoPaymentMethodUsage;
 import com.braintreepayments.api.VenmoRequest;
 import com.braintreepayments.api.VenmoTokenizeAccountCallback;
@@ -38,12 +44,14 @@ import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.WritableNativeMap;
 
+import java.lang.reflect.Field;
 import java.util.Objects;
 
 import javax.annotation.Nonnull;
 
 public class Braintree extends ReactContextBaseJavaModule {
     private static final String TAG = "BraintreeRNModule";
+
     private String token;
 
     private Callback payPalSuccessCallback;
@@ -56,8 +64,9 @@ public class Braintree extends ReactContextBaseJavaModule {
     private PayPalClient payPalClient;
     private VenmoClient venmoClient;
 
-    public Braintree(ReactApplicationContext reactContext) {
+    public Braintree(ReactApplicationContext reactContext, VenmoClient venmoClient) {
         super(reactContext);
+        this.venmoClient = venmoClient;
     }
 
     @Override @Nonnull
@@ -71,19 +80,42 @@ public class Braintree extends ReactContextBaseJavaModule {
      *
      * @param activity your payment activity
      */
-    public void onPaymentActivityResume(FragmentActivity activity) {
-        BrowserSwitchResult browserSwitchResult = this.braintreeClient.deliverBrowserSwitchResult(activity);
-        if (browserSwitchResult != null) {
-            this.payPalClient.onBrowserSwitchResult(browserSwitchResult, new PayPalBrowserSwitchResultCallback() {
-                @Override
-                public void onResult(@Nullable PayPalAccountNonce payPalAccountNonce, @Nullable Exception error) {
-                    if (error != null) {
-                        invokePayPalErrorCallback(error);
-                    } else if (payPalAccountNonce != null) {
-                        invokePayPalSuccessCallback(payPalAccountNonce);
+    public void onPaymentActivityResume(FragmentActivity activity, int resultCode, Intent data) {
+        if (this.braintreeClient != null && activity != null) {
+            BrowserSwitchResult browserSwitchResult = this.braintreeClient.deliverBrowserSwitchResult(activity);
+            if (browserSwitchResult != null && this.payPalClient != null) {
+                this.payPalClient.onBrowserSwitchResult(browserSwitchResult, new PayPalBrowserSwitchResultCallback() {
+                    @Override
+                    public void onResult(@Nullable PayPalAccountNonce payPalAccountNonce, @Nullable Exception error) {
+                        if (error != null) {
+                            invokePayPalErrorCallback(error);
+                        } else if (payPalAccountNonce != null) {
+                            invokePayPalSuccessCallback(payPalAccountNonce);
+                        }
                     }
-                }
-            });
+                });
+            } else if (this.venmoClient != null && data != null) {
+                this.venmoClient.setListener(new VenmoListener() {
+                    @Override
+                    public void onVenmoSuccess(@NonNull VenmoAccountNonce venmoAccountNonce) {
+                    }
+
+                    @Override
+                    public void onVenmoFailure(@NonNull Exception error) {
+                    }
+                });
+                this.venmoClient.onActivityResult(activity, resultCode, data, new VenmoOnActivityResultCallback() {
+                    @Override
+                    public void onResult(@Nullable VenmoAccountNonce venmoAccountNonce, @Nullable Exception error) {
+                        if (error != null) {
+                            invokeVenmoErrorCallback(error);
+                        } else if (venmoAccountNonce != null) {
+                            Log.d(TAG, "onResult with venmo nonce");
+                            invokeVenmoSuccessCallback(venmoAccountNonce);
+                        }
+                    }
+                });
+            }
         }
     }
 
@@ -225,23 +257,41 @@ public class Braintree extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void venmoRequestMultiUseAgreement(final String profileId, final boolean shouldVault, final Callback successCallback, final Callback errorCallback){
+    public void venmoRequestMultiUseAgreement(final String profileId, final boolean shouldVault, final Callback successCallback, final Callback errorCallback) {
         this.venmoSuccessCallback = successCallback;
         this.venmoErrorCallback = errorCallback;
 
-        VenmoRequest request = new VenmoRequest(VenmoPaymentMethodUsage.MULTI_USE);
+        final VenmoRequest request = new VenmoRequest(VenmoPaymentMethodUsage.MULTI_USE);
         if (!profileId.isEmpty()){
             request.setProfileId(profileId);
         }
-        request.setShouldVault(shouldVault);
-        tokenizeVenmoAccount(request);
+        request.setShouldVault(false);
+
+        getCurrentActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                tokenizeVenmoAccount(request);
+            }
+        });
     }
 
     private void tokenizeVenmoAccount(VenmoRequest request) {
         try{
-            venmoClient = new VenmoClient(this.braintreeClient);
-            venmoClient.tokenizeVenmoAccount((AppCompatActivity) Objects.requireNonNull(getCurrentActivity()), request, this.venmoTokenizeAccountCallback);
-        }catch (Exception error){
+            AppCompatActivity activity = (AppCompatActivity) Objects.requireNonNull(getCurrentActivity());
+            VenmoClient tempClient = new VenmoClient(braintreeClient);
+
+            Field fieldBraintreeClient = tempClient.getClass().getDeclaredField("braintreeClient");
+            fieldBraintreeClient.setAccessible(true);
+            Object braintreeClient = fieldBraintreeClient.get(tempClient);
+            fieldBraintreeClient.set(this.venmoClient, braintreeClient);
+
+            Field fieldVenmoApi = tempClient.getClass().getDeclaredField("venmoApi");
+            fieldVenmoApi.setAccessible(true);
+            Object venmoApi = fieldVenmoApi.get(tempClient);
+            fieldVenmoApi.set(this.venmoClient, venmoApi);
+
+            this.venmoClient.tokenizeVenmoAccount(activity, request);
+        } catch (Exception error){
             invokeVenmoErrorCallback(error);
         }
     }
@@ -305,6 +355,7 @@ public class Braintree extends ReactContextBaseJavaModule {
     }
 
     private void invokeVenmoErrorCallback(Exception error){
+        Log.e(TAG, "Venmo error " + error.getMessage());
         if (this.venmoErrorCallback != null) {
             if (error instanceof UserCanceledException) {
                 this.venmoErrorCallback.invoke("USER_CANCELLATION"); // parity with iOS
@@ -318,20 +369,21 @@ public class Braintree extends ReactContextBaseJavaModule {
         this.venmoSuccessCallback = null;
     }
 
+    private void invokeVenmoSuccessCallback(VenmoAccountNonce venmoAccountNonce) {
+        if (this.venmoSuccessCallback != null) {
+            this.venmoSuccessCallback.invoke(venmoAccountNonce.getString());
+        } else {
+            Log.e(TAG, "Venmo Success Callback is null");
+        }
+        this.venmoErrorCallback = null;
+        this.venmoSuccessCallback = null;
+    }
+
     private PayPalFlowStartedCallback payPalFlowStartedCallback = new PayPalFlowStartedCallback() {
         @Override
         public void onResult(@Nullable Exception error) {
             if (error != null) {
                 invokePayPalErrorCallback(error);
-            }
-        }
-    };
-
-    private VenmoTokenizeAccountCallback venmoTokenizeAccountCallback = new VenmoTokenizeAccountCallback() {
-        @Override
-        public void onResult(@Nullable Exception error) {
-            if (error != null){
-                invokeVenmoErrorCallback(error);
             }
         }
     };
