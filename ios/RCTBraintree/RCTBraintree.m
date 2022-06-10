@@ -138,9 +138,8 @@ RCT_EXPORT_METHOD(venmoRequestMultiUseAgreement:(NSString *)profileId
         }
         [venmoDriver tokenizeVenmoAccountWithVenmoRequest:venmoRequest completion:^(BTVenmoAccountNonce * _Nullable venmoAccount, NSError * _Nullable error) {
             NSMutableArray *args = [[NSMutableArray alloc] init];
-            if (venmoAccount) {
-                [args addObject:venmoAccount.nonce];             
-                callback(@[[NSNull null], tokenizedCard.nonce]);
+            if (venmoAccount) {          
+                callback(@[[NSNull null], venmoAccount.nonce]);
             } else if (error) {
                 [args addObject:error.description];
                 callback(args);
