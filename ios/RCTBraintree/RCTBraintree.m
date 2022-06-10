@@ -139,13 +139,15 @@ RCT_EXPORT_METHOD(venmoRequestMultiUseAgreement:(NSString *)profileId
         [venmoDriver tokenizeVenmoAccountWithVenmoRequest:venmoRequest completion:^(BTVenmoAccountNonce * _Nullable venmoAccount, NSError * _Nullable error) {
             NSMutableArray *args = [[NSMutableArray alloc] init];
             if (venmoAccount) {
-                [args addObject:venmoAccount.nonce];
+                [args addObject:venmoAccount.nonce];             
+                callback(@[[NSNull null], tokenizedCard.nonce]);
             } else if (error) {
                 [args addObject:error.description];
+                callback(args);
             } else { //user cancelled
                 [args addObject:@"USER_CANCELLATION"];
+                callback(args);
             }
-            callback(args);
         }];
     });
 }
