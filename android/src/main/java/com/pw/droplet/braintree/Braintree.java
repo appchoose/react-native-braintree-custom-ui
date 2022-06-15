@@ -67,6 +67,18 @@ public class Braintree extends ReactContextBaseJavaModule {
     public Braintree(ReactApplicationContext reactContext, VenmoClient venmoClient) {
         super(reactContext);
         this.venmoClient = venmoClient;
+        if (this.venmoClient != null) {
+            this.venmoClient.setListener(new VenmoListener() {
+                @Override
+                public void onVenmoSuccess(@NonNull VenmoAccountNonce venmoAccountNonce) {
+                }
+
+                @Override
+                public void onVenmoFailure(@NonNull Exception error) {
+                    invokeVenmoErrorCallback(error);
+                }
+            });
+        }
     }
 
     @Override @Nonnull
@@ -95,15 +107,6 @@ public class Braintree extends ReactContextBaseJavaModule {
                     }
                 });
             } else if (this.venmoClient != null && data != null) {
-                this.venmoClient.setListener(new VenmoListener() {
-                    @Override
-                    public void onVenmoSuccess(@NonNull VenmoAccountNonce venmoAccountNonce) {
-                    }
-
-                    @Override
-                    public void onVenmoFailure(@NonNull Exception error) {
-                    }
-                });
                 this.venmoClient.onActivityResult(activity, resultCode, data, new VenmoOnActivityResultCallback() {
                     @Override
                     public void onResult(@Nullable VenmoAccountNonce venmoAccountNonce, @Nullable Exception error) {
