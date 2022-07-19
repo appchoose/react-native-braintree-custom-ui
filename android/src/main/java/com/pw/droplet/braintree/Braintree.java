@@ -66,6 +66,10 @@ public class Braintree extends ReactContextBaseJavaModule {
 
     public Braintree(ReactApplicationContext reactContext, VenmoClient venmoClient) {
         super(reactContext);
+        setVenmoClient(venmoClient);
+    }
+
+    private void setVenmoClient(VenmoClient venmoClient) {
         this.venmoClient = venmoClient;
         if (this.venmoClient != null) {
             this.venmoClient.setListener(new VenmoListener() {
@@ -79,6 +83,10 @@ public class Braintree extends ReactContextBaseJavaModule {
                 }
             });
         }
+    }
+
+    public void updateVenmoClient(Activity activity, VenmoClient venmoClient) {
+        setVenmoClient(venmoClient);
     }
 
     @Override @Nonnull
