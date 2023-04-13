@@ -30,6 +30,7 @@ import com.braintreepayments.api.PayPalAccountNonce;
 import com.braintreepayments.api.PayPalCheckoutRequest;
 import com.braintreepayments.api.PayPalClient;
 import com.braintreepayments.api.PayPalPaymentIntent;
+import com.braintreepayments.api.PostalAddress;
 import com.braintreepayments.api.ThreeDSecureAdditionalInformation;
 import com.braintreepayments.api.ThreeDSecureClient;
 import com.braintreepayments.api.ThreeDSecurePostalAddress;
@@ -46,6 +47,8 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.bridge.WritableNativeMap;
 
 public class Braintree extends ReactContextBaseJavaModule implements ActivityEventListener, LifecycleEventListener {
     private final Context mContext;
@@ -53,6 +56,8 @@ public class Braintree extends ReactContextBaseJavaModule implements ActivityEve
     private BraintreeClient mBraintreeClient;
     private PayPalClient mPayPalClient;
     private ThreeDSecureClient mThreeDSecureClient;
+
+    private boolean mShippingRequired;
 
     private Callback successCallback;
     private Callback errorCallback;
@@ -144,14 +149,17 @@ public class Braintree extends ReactContextBaseJavaModule implements ActivityEve
     }
 
     @ReactMethod
-    public void paypalRequest(final String amount, final String currencyCode, final Callback successCallback, final Callback errorCallback) {
+    public void paypalRequest(final String amount, final boolean shippingRequired, final String currencyCode, final Callback successCallback, final Callback errorCallback) {
         this.successCallback = successCallback;
         this.errorCallback = errorCallback;
 
+        mShippingRequired = shippingRequired;
         mPayPalClient = new PayPalClient(mBraintreeClient);
         PayPalCheckoutRequest request = new PayPalCheckoutRequest(amount);
         request.setCurrencyCode(currencyCode);
         request.setIntent(PayPalPaymentIntent.AUTHORIZE);
+        request.setShippingAddressRequired(shippingRequired);
+        request.setShippingAddressEditable(shippingRequired);
         mPayPalClient.tokenizePayPalAccount(
             mCurrentActivity,
             request,
@@ -284,6 +292,18 @@ public class Braintree extends ReactContextBaseJavaModule implements ActivityEve
                 });
     }
 
+    private WritableMap getPayPalAddressMap(PostalAddress address) {
+        WritableNativeMap map = new WritableNativeMap();
+        map.putString("streetAddress", address.getStreetAddress());
+        map.putString("recipientName", address.getRecipientName());
+        map.putString("postalCode", address.getPostalCode());
+        map.putString("countryCodeAlpha2", address.getCountryCodeAlpha2());
+        map.putString("extendedAddress", address.getExtendedAddress());
+        map.putString("region", address.getRegion());
+        map.putString("locality", address.getLocality());
+        return map;
+    }
+
     private void handlePayPalResult(
             @Nullable PayPalAccountNonce payPalAccountNonce,
             @Nullable Exception error
@@ -293,7 +313,20 @@ public class Braintree extends ReactContextBaseJavaModule implements ActivityEve
             return;
         }
         if (payPalAccountNonce != null) {
-            nonceCallback(payPalAccountNonce.getString());
+            WritableNativeMap map = new WritableNativeMap();
+            map.putString("nonce", payPalAccountNonce.getString());
+            map.putString("email", payPalAccountNonce.getEmail());
+            map.putString("firstName", payPalAccountNonce.getFirstName());
+            map.putString("lastName", payPalAccountNonce.getLastName());
+            map.putString("phone", payPalAccountNonce.getPhone());
+//             if (payPalAccountNonce.getBillingAddress() != null) {
+//                 map.putMap("billingAddress", getPayPalAddressMap(payPalAccountNonce.getBillingAddress()));
+//             }
+            final PostalAddress shippingAddress = payPalAccountNonce.getShippingAddress();
+            if (mShippingRequired && shippingAddress != null) {
+                map.putMap("shippingAddress", getPayPalAddressMap(shippingAddress));
+            }
+            this.successCallback.invoke(map);
         }
     }
 

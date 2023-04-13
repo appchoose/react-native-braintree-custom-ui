@@ -12,12 +12,27 @@ module.exports = {
       Braintree.setup(token, test => resolve(test), err => reject(err));
     });
   },
-  showPayPalViewController(amount, _, currencyCode) {
-    return new Promise(function (resolve, reject) {
+  showPayPalViewController(amount, shippingRequired, currencyCode) {
+    return new Promise(function(resolve, reject) {
       Braintree.paypalRequest(
           amount,
+          shippingRequired,
           currencyCode,
-          (nonce) => resolve({ nonce }),
+          ({
+             nonce,
+             email,
+             firstName,
+             lastName,
+             phone,
+             shippingAddress
+           }) => resolve({
+            nonce,
+            email,
+            firstName,
+            lastName,
+            phone,
+            shipping: shippingAddress
+          }),
           error => reject(error)
       );
     });
