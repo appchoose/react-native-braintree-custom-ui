@@ -8,22 +8,37 @@ const Braintree = NativeModules.Braintree;
 
 module.exports = {
   setup(token) {
-    return new Promise(function (resolve, reject) {
+    return new Promise(function(resolve, reject) {
       Braintree.setup(token, test => resolve(test), err => reject(err));
     });
   },
-  showPayPalViewController(amount, _, currencyCode) {
-    return new Promise(function (resolve, reject) {
+  showPayPalViewController(amount, shippingRequired, currencyCode) {
+    return new Promise(function(resolve, reject) {
       Braintree.paypalRequest(
           amount,
+          shippingRequired,
           currencyCode,
-          (nonce) => resolve({ nonce }),
+          ({
+             nonce,
+             email,
+             firstName,
+             lastName,
+             phone,
+             shippingAddress
+           }) => resolve({
+            nonce,
+            email,
+            firstName,
+            lastName,
+            phone,
+            shipping: shippingAddress
+          }),
           error => reject(error)
       );
     });
   },
   getCardNonce(parameters = {}) {
-    return new Promise(function (resolve, reject) {
+    return new Promise(function(resolve, reject) {
       Braintree.getCardNonce(
           parameters,
           nonce => resolve(nonce),
@@ -32,7 +47,7 @@ module.exports = {
     });
   },
   check3DSecure(parameters = {}) {
-    return new Promise(function (resolve, reject) {
+    return new Promise(function(resolve, reject) {
       console.log(parameters)
       Braintree.check3DSecure(
           parameters,
