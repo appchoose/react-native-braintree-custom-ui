@@ -16,7 +16,7 @@
 #import "BraintreePayPal.h"
 #import "BraintreeCard.h"
 #import "BTDataCollector.h"
-#import "PPDataCollector.h"
+#import "BraintreeThreeDSecure.h"
 
 @interface RCTBraintree : UIViewController <RCTBridgeModule, BTViewControllerPresentingDelegate>
 @property (nonatomic, strong, readwrite) BTPaymentFlowDriver *paymentFlowDriver;
