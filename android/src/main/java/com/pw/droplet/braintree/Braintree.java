@@ -43,6 +43,8 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.bridge.WritableNativeMap;
 
 public class Braintree extends ReactContextBaseJavaModule   {
   private static final int PAYMENT_REQUEST = 1706816330;
@@ -55,6 +57,7 @@ public class Braintree extends ReactContextBaseJavaModule   {
   private BraintreeFragment mBraintreeFragment;
 
   private ReadableMap threeDSecureOptions;
+  private boolean mShippingRequired;
 
   public Braintree(ReactApplicationContext reactContext) {
     super(reactContext);
@@ -73,6 +76,17 @@ public class Braintree extends ReactContextBaseJavaModule   {
     this.token = token;
   }
 
+    private WritableMap getPayPalAddressMap(PostalAddress address) {
+        WritableNativeMap map = new WritableNativeMap();
+        map.putString("streetAddress", address.getStreetAddress());
+        map.putString("recipientName", address.getRecipientName());
+        map.putString("postalCode", address.getPostalCode());
+        map.putString("countryCodeAlpha2", address.getCountryCodeAlpha2());
+        map.putString("extendedAddress", address.getExtendedAddress());
+        map.putString("region", address.getRegion());
+        map.putString("locality", address.getLocality());
+        return map;
+    }
 
   @ReactMethod
   public void setup(final String url, final Callback successCallback, final Callback errorCallback) {
@@ -86,7 +100,7 @@ OkHttpClient client = new OkHttpClient.Builder()
 Request request = new Request.Builder()
                      .url(url)
                      .build();
-                   
+
 Response response = client.newCall(request).execute();
 
 res= response.body().string();
@@ -122,30 +136,27 @@ try{
               nonceCallback(paymentMethodNonce.getNonce());
             }
           }
-  //         else if (paymentMethodNonce instanceof PayPalAccountNonce) {
-  //   PayPalAccountNonce payPalAccountNonce = (PayPalAccountNonce)paymentMethodNonce;
+          else if (paymentMethodNonce instanceof PayPalAccountNonce) {
+            PayPalAccountNonce payPalAccountNonce = (PayPalAccountNonce)paymentMethodNonce;
+            WritableNativeMap map = new WritableNativeMap();
+            map.putString("nonce", paymentMethodNonce.getNonce());
+            map.putString("email", payPalAccountNonce.getEmail());
+            map.putString("firstName", payPalAccountNonce.getFirstName());
+            map.putString("lastName", payPalAccountNonce.getLastName());
+            map.putString("phone", payPalAccountNonce.getPhone());
 
-  //   // Access additional information
-  //   String email = payPalAccountNonce.getEmail();
-  //   String firstName = payPalAccountNonce.getFirstName();
-  //   String lastName = payPalAccountNonce.getLastName();
-  //   String phone = payPalAccountNonce.getPhone();
-
-  //   // See PostalAddress.java for details
-  //   PostalAddress billingAddress = payPalAccountNonce.getBillingAddress();
-  //   PostalAddress shippingAddress = payPalAccountNonce.getShippingAddress();
-  //     nonceCallback(paymentMethodNonce.getNonce(),
-  //    email,
-  //     firstName,
-  //     lastName,phone,billingAddress,shippingAddress
-  //     );
-  // }
-           else {
+            final PostalAddress shippingAddress = payPalAccountNonce.getShippingAddress();
+            if (mShippingRequired && shippingAddress != null) {
+                map.putMap("shippingAddress", getPayPalAddressMap(shippingAddress));
+            }
+            nonceCallback(map);
+          }
+          else {
            nonceCallback(paymentMethodNonce.getNonce());
           }
         }
       });
-      
+
       this.mBraintreeFragment.addListener(new BraintreeErrorListener() {
         @Override
         public void onError(Exception error) {
@@ -186,7 +197,7 @@ try{
         }
       });
       this.setToken(token);
-      successCallback.invoke(this.getToken()); 
+      successCallback.invoke(this.getToken());
     //   } catch (IOException e) {
     //           Log.e("PAYMENT_REQUEST", "I got an error", e);
     //   errorCallback.invoke(e.getMessage());
@@ -293,9 +304,9 @@ ThreeDSecureRequest threeDSecureRequest = new ThreeDSecureRequest()
 ThreeDSecure.performVerification(this.mBraintreeFragment, threeDSecureRequest);
   }
 
-  // public void nonceCallback(Object... args) {
-  //   this.successCallback.invoke(args);
-  // }
+  public void nonceCallback(WritableNativeMap map) {
+    this.successCallback.invoke(map);
+  }
   public void nonceCallback(String nonce) {
   this.successCallback.invoke(nonce);
   }
@@ -305,15 +316,18 @@ ThreeDSecure.performVerification(this.mBraintreeFragment, threeDSecureRequest);
   }
 
   @ReactMethod
-  public void paypalRequest(final String amount , final Callback successCallback, final Callback errorCallback) {
+  public void paypalRequest(final String amount, final boolean shippingRequired, final String currencyCode, final Callback successCallback, final Callback errorCallback) {
     this.successCallback = successCallback;
     this.errorCallback = errorCallback;
-      PayPalRequest request = new PayPalRequest(amount)
-    .currencyCode("EUR")
-    .intent(PayPalRequest.INTENT_AUTHORIZE);
-  // PayPal.requestBillingAgreement(this.mBraintreeFragment, request);
-  PayPal.requestOneTimePayment(this.mBraintreeFragment, request);
+    mShippingRequired = shippingRequired;
+    PayPalRequest request = new PayPalRequest(amount)
+        .currencyCode(currencyCode)
+        .shippingAddressRequired(shippingRequired)
+        .shippingAddressEditable(shippingRequired)
+        .intent(PayPalRequest.INTENT_AUTHORIZE);
+    // PayPal.requestBillingAgreement(this.mBraintreeFragment, request);
+    PayPal.requestOneTimePayment(this.mBraintreeFragment, request);
   }
-  
+
   public void onNewIntent(Intent intent){}
 }

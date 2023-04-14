@@ -61,14 +61,14 @@ RCT_EXPORT_METHOD(setupWithURLScheme:(NSString *)serverUrl urlscheme:(NSString*)
 }
 
 
-RCT_EXPORT_METHOD(showPayPalViewController: (NSString *)amount shippingrequired:(BOOL*)shippingrequired callback: (RCTResponseSenderBlock) callback)
+RCT_EXPORT_METHOD(showPayPalViewController: (NSString *)amount shippingrequired:(BOOL*)shippingrequired currencyCode:(NSString*)currencyCode callback: (RCTResponseSenderBlock) callback)
 {
     dispatch_async(dispatch_get_main_queue(), ^{
         
         BTPayPalDriver *payPalDriver = [[BTPayPalDriver alloc] initWithAPIClient:self.braintreeClient];
         payPalDriver.viewControllerPresentingDelegate = self;
         BTPayPalRequest *request= [[BTPayPalRequest alloc] initWithAmount:amount];
-        request.currencyCode = @"EUR"; // Optional; see BTPayPalRequest.h for other options
+        request.currencyCode = currencyCode;
         request.shippingAddressRequired = shippingrequired;
         request.shippingAddressEditable = shippingrequired;
         [payPalDriver requestOneTimePayment:request completion:^(BTPayPalAccountNonce * _Nullable tokenizedPayPalAccount, NSError * _Nullable error) {
