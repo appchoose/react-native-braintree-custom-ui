@@ -24,18 +24,11 @@ import androidx.fragment.app.FragmentActivity;
 import com.braintreepayments.api.BraintreeClient;
 import com.braintreepayments.api.BraintreeRequestCodes;
 import com.braintreepayments.api.BrowserSwitchResult;
-import com.braintreepayments.api.Card;
-import com.braintreepayments.api.CardClient;
 import com.braintreepayments.api.PayPalAccountNonce;
 import com.braintreepayments.api.PayPalCheckoutRequest;
 import com.braintreepayments.api.PayPalClient;
 import com.braintreepayments.api.PayPalPaymentIntent;
 import com.braintreepayments.api.PostalAddress;
-import com.braintreepayments.api.ThreeDSecureAdditionalInformation;
-import com.braintreepayments.api.ThreeDSecureClient;
-import com.braintreepayments.api.ThreeDSecurePostalAddress;
-import com.braintreepayments.api.ThreeDSecureRequest;
-import com.braintreepayments.api.ThreeDSecureResult;
 import com.braintreepayments.api.UserCanceledException;
 
 import android.app.Activity;
@@ -55,7 +48,6 @@ public class Braintree extends ReactContextBaseJavaModule implements ActivityEve
     private FragmentActivity mCurrentActivity;
     private BraintreeClient mBraintreeClient;
     private PayPalClient mPayPalClient;
-    private ThreeDSecureClient mThreeDSecureClient;
 
     private boolean mShippingRequired;
 
@@ -76,17 +68,7 @@ public class Braintree extends ReactContextBaseJavaModule implements ActivityEve
 
     @Override
     public void onActivityResult(Activity activity, int requestCode, int resultCode, Intent intent) {
-        switch (requestCode) {
-            case BraintreeRequestCodes.THREE_D_SECURE:
-                if (mThreeDSecureClient != null) {
-                    mThreeDSecureClient.onActivityResult(
-                            resultCode,
-                            intent,
-                            this::handleThreeDSecureResult
-                    );
-                }
-                break;
-        }
+        //NOTE: empty implementation
     }
 
     @Override
@@ -108,14 +90,6 @@ public class Braintree extends ReactContextBaseJavaModule implements ActivityEve
                             mPayPalClient.onBrowserSwitchResult(
                                     browserSwitchResult,
                                     this::handlePayPalResult
-                            );
-                        }
-                        break;
-                    case BraintreeRequestCodes.THREE_D_SECURE:
-                        if (mThreeDSecureClient != null) {
-                            mThreeDSecureClient.onBrowserSwitchResult(
-                                    browserSwitchResult,
-                                    this::handleThreeDSecureResult
                             );
                         }
                         break;
@@ -167,131 +141,6 @@ public class Braintree extends ReactContextBaseJavaModule implements ActivityEve
         );
     }
 
-    @ReactMethod
-    public void getCardNonce(final ReadableMap parameters, final Callback successCallback, final Callback errorCallback) {
-        this.successCallback = successCallback;
-        this.errorCallback = errorCallback;
-
-        CardClient cardClient = new CardClient(mBraintreeClient);
-        Card card = new Card();
-
-        if (parameters.hasKey("number"))
-            card.setNumber(parameters.getString("number"));
-
-        if (parameters.hasKey("cvv"))
-            card.setCvv(parameters.getString("cvv"));
-
-        // In order to keep compatibility with iOS implementation, do not accept expirationMonth and exporationYear,
-        // accept rather expirationDate (which is combination of expirationMonth/expirationYear)
-        if (parameters.hasKey("expirationDate"))
-            card.setExpirationDate(parameters.getString("expirationDate"));
-
-        if (parameters.hasKey("cardholderName"))
-            card.setCardholderName(parameters.getString("cardholderName"));
-
-        if (parameters.hasKey("firstname"))
-            card.setFirstName(parameters.getString("firstname"));
-
-        if (parameters.hasKey("lastname"))
-            card.setLastName(parameters.getString("lastname"));
-
-        if (parameters.hasKey("countryCode"))
-            card.setCountryCode(parameters.getString("countryCode"));
-
-        if (parameters.hasKey("countryCodeAlpha2"))
-            card.setCountryCode(parameters.getString("countryCodeAlpha2"));
-
-        if (parameters.hasKey("locality"))
-            card.setLocality(parameters.getString("locality"));
-
-        if (parameters.hasKey("postalCode"))
-            card.setPostalCode(parameters.getString("postalCode"));
-
-        if (parameters.hasKey("region"))
-            card.setRegion(parameters.getString("region"));
-
-        if (parameters.hasKey("streetAddress"))
-            card.setStreetAddress(parameters.getString("streetAddress"));
-
-        if (parameters.hasKey("extendedAddress"))
-            card.setExtendedAddress(parameters.getString("extendedAddress"));
-
-        cardClient.tokenize(card, (cardNonce, error) -> {
-            if (error != null) {
-                nonceErrorCallback(error);
-                return;
-            }
-            if (cardNonce != null) {
-                nonceCallback(cardNonce.getString());
-            }
-        });
-    }
-
-    @ReactMethod
-    public void check3DSecure(final ReadableMap parameters, final Callback successCallback, final Callback errorCallback) {
-        this.successCallback = successCallback;
-        this.errorCallback = errorCallback;
-
-        ThreeDSecurePostalAddress address = new ThreeDSecurePostalAddress();
-
-        if (parameters.hasKey("firstname"))
-            address.setGivenName(parameters.getString("firstname"));
-
-        if (parameters.hasKey("lastname"))
-            address.setSurname(parameters.getString("lastname"));
-
-        if (parameters.hasKey("phone"))
-            address.setPhoneNumber(parameters.getString("phone"));
-
-        if (parameters.hasKey("countryCode"))
-            address.setCountryCodeAlpha2(parameters.getString("countryCode"));
-
-        if (parameters.hasKey("locality"))
-            address.setLocality(parameters.getString("locality"));
-
-        if (parameters.hasKey("postalCode"))
-            address.setPostalCode(parameters.getString("postalCode"));
-
-        if (parameters.hasKey("region"))
-            address.setRegion(parameters.getString("region"));
-
-        if (parameters.hasKey("streetAddress"))
-            address.setStreetAddress(parameters.getString("streetAddress"));
-
-        if (parameters.hasKey("extendedAddress"))
-            address.setExtendedAddress(parameters.getString("extendedAddress"));
-
-        mThreeDSecureClient = new ThreeDSecureClient(mBraintreeClient);
-
-        ThreeDSecureAdditionalInformation additionalInformation = new ThreeDSecureAdditionalInformation();
-        additionalInformation.setShippingAddress(address);
-
-        final ThreeDSecureRequest threeDSecureRequest = new ThreeDSecureRequest();
-        threeDSecureRequest.setNonce(parameters.getString("nonce"));
-        threeDSecureRequest.setEmail(parameters.getString("email"));
-        threeDSecureRequest.setBillingAddress(address);
-        threeDSecureRequest.setVersionRequested(ThreeDSecureRequest.VERSION_2);
-        threeDSecureRequest.setAdditionalInformation(additionalInformation);
-        threeDSecureRequest.setAmount(parameters.getString("amount"));
-
-        mThreeDSecureClient.performVerification(
-                mCurrentActivity,
-                threeDSecureRequest,
-                (threeDSecureResult, error) -> {
-                    if (error != null) {
-                        nonceErrorCallback(error);
-                        return;
-                    }
-                    if (threeDSecureResult != null) {
-                        mThreeDSecureClient.continuePerformVerification(
-                                mCurrentActivity,
-                                threeDSecureRequest,
-                                threeDSecureResult,
-                                this::handleThreeDSecureResult);
-                    }
-                });
-    }
-
     private WritableMap getPayPalAddressMap(PostalAddress address) {
         WritableNativeMap map = new WritableNativeMap();
         map.putString("streetAddress", address.getStreetAddress());
@@ -327,16 +176,6 @@ public class Braintree extends ReactContextBaseJavaModule implements ActivityEve
                 map.putMap("shippingAddress", getPayPalAddressMap(shippingAddress));
             }
             this.successCallback.invoke(map);
-        }
-    }
-
-    private void handleThreeDSecureResult(ThreeDSecureResult threeDSecureResult, Exception error) {
-        if (error != null) {
-            nonceErrorCallback(error);
-            return;
-        }
-        if (threeDSecureResult != null && threeDSecureResult.getTokenizedCard() != null) {
-            nonceCallback(threeDSecureResult.getTokenizedCard().getString());
         }
     }
 

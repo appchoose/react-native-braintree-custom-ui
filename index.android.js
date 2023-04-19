@@ -37,23 +37,4 @@ module.exports = {
       );
     });
   },
-  getCardNonce(parameters = {}) {
-    return new Promise(function(resolve, reject) {
-      Braintree.getCardNonce(
-          parameters,
-          nonce => resolve(nonce),
-          err => reject(err)
-      );
-    });
-  },
-  check3DSecure(parameters = {}) {
-    return new Promise(function(resolve, reject) {
-      console.log(parameters)
-      Braintree.check3DSecure(
-          parameters,
-          nonce => resolve(nonce),
-          err => reject(err)
-      );
-    });
-  },
 };

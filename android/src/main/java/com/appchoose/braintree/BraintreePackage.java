@@ -20,5 +20,4 @@ public class BraintreePackage implements ReactPackage {
   public List<ViewManager> createViewManagers(ReactApplicationContext reactContext) {
     return Collections.emptyList();
   }
-
 }

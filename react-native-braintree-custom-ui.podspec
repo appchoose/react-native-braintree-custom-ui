@@ -16,5 +16,4 @@ Pod::Spec.new do |s|
   s.dependency 'Braintree'
   s.dependency 'Braintree/DataCollector'
   s.dependency 'Braintree/PaymentFlow'
-  s.dependency "Braintree/ThreeDSecure"
 end

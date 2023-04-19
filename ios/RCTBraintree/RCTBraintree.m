@@ -100,127 +100,15 @@ RCT_EXPORT_METHOD(showPayPalViewController: (NSString *)amount shippingrequired:
                 } else {
                     args = [@[[NSNull null], tokenizedPayPalAccount.nonce, email, firstName, lastName] mutableCopy];
                 }
-            } else if ( error != nil ) {
+            } else if (error != nil && (error.code == 4 || error.code == 6)) {
+                args = @[@"USER_CANCELLATION", [NSNull null]];
+            } else {
                 args = @[error.description, [NSNull null]];
             }
 
             callback(args);
         }];
     });
-}
-
-- (void)onLookupComplete:(__unused BTThreeDSecureRequest *)request result:(__unused BTThreeDSecureLookup *)lookup next:(void (^)(void))next
-{
-    // Optionally inspect the lookup result and prepare UI if a challenge is required
-    next();
-}
-
-- (void)run3DSecureCheck:(NSDictionary *)parameters callback: (RCTResponseSenderBlock)callback
-{
-    BTThreeDSecureRequest *threeDSecureRequest = [[BTThreeDSecureRequest alloc] init];
-    threeDSecureRequest.amount = [NSDecimalNumber decimalNumberWithString: parameters[@"amount"]];
-    threeDSecureRequest.nonce =  parameters[@"nonce"];
-    // Make sure that self conforms to the BTThreeDSecureRequestDelegate protocol
-    threeDSecureRequest.threeDSecureRequestDelegate = self;
-    threeDSecureRequest.email = parameters[@"email"];
-    threeDSecureRequest.versionRequested = BTThreeDSecureVersion2;
-
-    BTThreeDSecurePostalAddress *address = [BTThreeDSecurePostalAddress new];
-    address.givenName =  parameters[@"firstname"]; // ASCII-printable characters required, else will throw a validation error
-    address.surname = parameters[@"lastname"]; // ASCII-printable characters required, else will throw a validation error
-    address.phoneNumber = parameters[@"phone"];
-    address.streetAddress = parameters[@"streetAddress"];
-    address.locality = parameters[@"locality"];
-    address.postalCode = parameters[@"postalCode"];
-    threeDSecureRequest.billingAddress = address;
-    // Optional additional information.
-    // For best results, provide as many of these elements as possible.
-    BTThreeDSecureAdditionalInformation *additionalInformation = [BTThreeDSecureAdditionalInformation new];
-    additionalInformation.shippingAddress = address;
-    threeDSecureRequest.additionalInformation = additionalInformation;
-
-    //
-    self.paymentFlowDriver = [[BTPaymentFlowDriver alloc] initWithAPIClient:self.braintreeClient];
-    self.paymentFlowDriver.viewControllerPresentingDelegate = self;
-
-    [self.paymentFlowDriver startPaymentFlow:threeDSecureRequest completion:^(BTPaymentFlowResult * _Nonnull result, NSError * _Nonnull error) {
-        NSArray *args = @[];
-        if (error) {
-            args = @[error.localizedDescription, [NSNull null]];
-            // Handle error
-        } else if (result) {
-            BTThreeDSecureResult *threeDSecureResult = (BTThreeDSecureResult *)result;
-            if (threeDSecureResult.tokenizedCard.threeDSecureInfo.liabilityShiftPossible) {
-                if (threeDSecureResult.tokenizedCard.threeDSecureInfo.liabilityShifted) {
-                    args = @[[NSNull null], threeDSecureResult.tokenizedCard.nonce];
-                } else {
-                    // 3D Secure authentication failed
-                    args = @[@"failed", [NSNull null]];
-                }
-            } else {
-                args = @[[NSNull null], threeDSecureResult.tokenizedCard.nonce];
-            }
-        } else {
-            // 3D Secure authentication was not possible
-            args = @[[NSNull null], parameters[@"nonce"]];
-        }
-        callback(args);
-    }];
-
-}
-
-RCT_EXPORT_METHOD(check3DSecure: (NSDictionary *)parameters callback: (RCTResponseSenderBlock)callback)
-{
-    [self run3DSecureCheck:parameters callback:callback];
-}
-
-
-RCT_EXPORT_METHOD(getCardNonce: (NSDictionary *)params callback: (RCTResponseSenderBlock)callback)
-{
-    NSMutableDictionary *parameters = [params mutableCopy];
-    BTCardClient *cardClient = [[BTCardClient alloc] initWithAPIClient: self.braintreeClient];
-    BTCard *card = [[BTCard alloc] init];
-    card.number = parameters[@"number"];
-    card.expirationMonth = parameters[@"expirationMonth"];
-    card.expirationYear = parameters[@"expirationYear"];
-    card.cvv = parameters[@"cvv"];
-    card.shouldValidate = NO;
-    [cardClient tokenizeCard:card
-    completion:^(BTCardNonce *tokenizedCard, NSError *error) {
-        if ( error == nil ) {
-            if(parameters[@"amount"] == nil) {
-                NSArray *args = @[];
-                args = @[[NSNull null], tokenizedCard.nonce];
-                callback(args);
-            }
-            else {
-                parameters[@"nonce"] = tokenizedCard.nonce;
-                [self run3DSecureCheck:parameters callback:callback];
-            }
-        }
-        else {
-
-            NSArray *args = @[];
-            NSMutableDictionary *userInfo = [error.userInfo mutableCopy];
-
-            [userInfo removeObjectForKey:@"com.braintreepayments.BTHTTPJSONResponseBodyKey"];
-            [userInfo removeObjectForKey:@"com.braintreepayments.BTHTTPURLResponseKey"];
-            NSError *serialisationErr;
-            NSData *jsonData = [NSJSONSerialization dataWithJSONObject:userInfo
-                                options:NSJSONWritingPrettyPrinted
-                                error:&serialisationErr];
-
-            if (! jsonData) {
-                args = @[serialisationErr.description, [NSNull null]];
-            } else {
-                NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
-                args = @[jsonString, [NSNull null]];
-            }
-            callback(args);
-        }
-
-
-    }];
 }
 
 - (BOOL)application:(UIApplication *)application
@@ -232,39 +120,6 @@ RCT_EXPORT_METHOD(getCardNonce: (NSDictionary *)params callback: (RCTResponseSen
         return [BTAppContextSwitcher handleOpenURL:url];
     }
     return NO;
-}
-
-#pragma mark - BTViewControllerPresentingDelegate
-
-- (void)paymentDriver:(id)paymentDriver requestsPresentationOfViewController:(UIViewController *)viewController
-{
-    [self.reactRoot presentViewController:viewController animated:YES completion:nil];
-}
-
-- (void)paymentDriver:(id)paymentDriver requestsDismissalOfViewController:(UIViewController *)viewController
-{
-    if (!self.reactRoot.isBeingDismissed) {
-        [self.reactRoot.presentingViewController dismissViewControllerAnimated:YES completion:nil];
-    }
-}
-
-// #pragma mark - BTDropInViewControllerDelegate
-
-- (void)userDidCancelPayment
-{
-    [self.reactRoot dismissViewControllerAnimated:YES completion:nil];
-    runCallback = FALSE;
-    self.callback(@[@"USER_CANCELLATION", [NSNull null]]);
-}
-
-- (UIViewController*)reactRoot
-{
-    UIViewController *root = [UIApplication sharedApplication].keyWindow.rootViewController;
-    while (root.presentedViewController) {
-        root = root.presentedViewController;
-    }
-
-    return root;
 }
 
 @end

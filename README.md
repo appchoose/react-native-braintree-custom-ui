@@ -25,20 +25,6 @@ BTClient.setup(<serverUrl>,'your.bundle.id.payments');
 ```
 
 ### Android
-Add this to your `build.gradle`
-
-```groovy
-    repositories {
-        maven {
-            url "https://cardinalcommerceprod.jfrog.io/artifactory/android"
-            credentials {
-                username 'braintree_team_sdk'
-                password 'AKCp8jQcoDy2hxSWhDAUQKXLDPDx6NYRkqrgFLRc3qDrayg6rrCbJpsKKyMwaykVL8FWusJpp'
-            }
-        }
-    }
-```
-
 In Your `AndroidManifest.xml`, `android:allowBackup="false"` can be replaced `android:allowBackup="true"`, it is responsible for app backup.
 
 Also, add this intent-filter to your main activity in `AndroidManifest.xml`
@@ -106,73 +92,6 @@ Update code in `AppDelegate.m`:
 ```
 
 ## Usage
-
-### Get Card Nonce
-If you only want to tokenize credit card information, you can use the following:
-
-```js
-const card = {
-  number: "4111111111111111",
-  expirationDate: "10/20", // or "10/2020" or any valid date
-  cvv: "400",
-}
-
-BTClient.getCardNonce(card).then(function(nonce) {
-  //payment succeeded, pass nonce to server
-})
-.catch(function(err) {
-  //error handling
-});
-
-// Full list of card parameters:
-type Card = {
-  number: string,
-  cvv: string,
-  expirationDate: string,
-  cardholderName: string,
-  firstName: string,
-  lastName: string,
-  company: string,
-  countryName: string,
-  countryCodeAlpha2: string,
-  countryCodeAlpha3: string,
-  countryCodeNumeric: string,
-  locality: string,
-  postalCode: string,
-  region: string,
-  streetAddress: string,
-  extendedAddress: string,
-  amount: number
-}
-```
-
-### Check 3D Secure for card nonce
-If you only want to tokenize credit card information, you can use the following:
-
-```js
-const params = {
-}
-
-BTClient.check3DSecure(params).then(function(nonce) {
-  //payment succeeded, pass nonce to server
-})
-.catch(function(err) {
-  //error handling
-});
-
-// Full list of card parameters:
-type Params = {
-  nonce: string
-  firstName: string,
-  lastName: string,
-  locality: string,
-  postalCode: string,
-  region: string,
-  streetAddress: string,
-  extendedAddress: string,
-  amount: number
-}
-```
 
 ### PayPal Checkout 
 
