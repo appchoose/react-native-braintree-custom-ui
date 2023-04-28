@@ -14,9 +14,7 @@
 #import "BraintreePaymentFlow.h"
 #import "BraintreeCore.h"
 #import "BraintreePayPal.h"
-#import "BraintreeCard.h"
 #import "BTDataCollector.h"
-#import "PPDataCollector.h"
 
 @interface RCTBraintree : UIViewController <RCTBridgeModule, BTViewControllerPresentingDelegate>
 @property (nonatomic, strong, readwrite) BTPaymentFlowDriver *paymentFlowDriver;
@@ -30,5 +28,4 @@
 - (BOOL)application:(UIApplication *)application
             openURL:(NSURL *)url
             options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *) options;
-- (void) run3DSecureCheck: (NSDictionary *)parameters callback: (RCTResponseSenderBlock)callback;
 @end

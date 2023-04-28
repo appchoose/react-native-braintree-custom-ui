@@ -1,16 +1,4 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.pw.droplet.braintree">
+          package="com.appchoose.braintree">
     <uses-permission android:name="android.permission.INTERNET" />
-    <application android:allowBackup="true" android:label="@string/app_name">
-    <activity android:name="com.braintreepayments.api.threedsecure.ThreeDSecureWebViewActivity" android:exported="true" />
-      <activity android:name="com.braintreepayments.api.BraintreeBrowserSwitchActivity"
-        android:launchMode="singleTask" android:exported="true">
-        <intent-filter>
-            <action android:name="android.intent.action.VIEW" />
-            <category android:name="android.intent.category.DEFAULT" />
-            <category android:name="android.intent.category.BROWSABLE" />
-            <data android:scheme="${applicationId}.braintree" />
-        </intent-filter>
-      </activity>
-    </application>
 </manifest>

@@ -30,35 +30,4 @@ module.exports = {
           });
     });
   },
-  check3DSecure(parameters = {}) {
-    return new Promise(function(resolve, reject) {
-      RCTBraintree.check3DSecure(parameters, function(
-          err,
-          nonce
-      ) {
-        nonce !== null ?
-            resolve(nonce) :
-            reject(err);
-      });
-    });
-  },
-  getCardNonce(parameters = {}) {
-    return new Promise(function(resolve, reject) {
-      RCTBraintree.getCardNonce(parameters, function(
-          err,
-          nonce
-      ) {
-        nonce !== null ?
-            resolve(nonce) :
-            reject(err);
-      });
-    });
-  },
-  getDeviceData(options = {}) {
-    return new Promise(function (resolve, reject) {
-      RCTBraintree.getDeviceData(options, function (err, deviceData) {
-        deviceData != null ? resolve(deviceData) : reject(err);
-      });
-    });
-  },
 };
