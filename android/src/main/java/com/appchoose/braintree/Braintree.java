@@ -1,8 +1,5 @@
 package com.appchoose.braintree;
 
-import java.util.Map;
-import java.util.HashMap;
-import android.util.Log;
 import java.util.concurrent.TimeUnit;
 import java.io.IOException;
 import androidx.appcompat.app.AppCompatActivity;
@@ -14,42 +11,31 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 import com.google.gson.Gson;
-import android.os.Bundle;
 import android.content.Intent;
-import android.content.Context;
 
 import androidx.annotation.Nullable;
 import androidx.fragment.app.FragmentActivity;
 
 import com.braintreepayments.api.BraintreeClient;
 import com.braintreepayments.api.BraintreeRequestCodes;
-import com.braintreepayments.api.BrowserSwitchResult;
 import com.braintreepayments.api.PayPalAccountNonce;
 import com.braintreepayments.api.PayPalCheckoutRequest;
 import com.braintreepayments.api.PayPalClient;
 import com.braintreepayments.api.PayPalPaymentIntent;
-import com.braintreepayments.api.PostalAddress;
-import com.braintreepayments.api.UserCanceledException;
 
 import android.app.Activity;
 import com.facebook.react.bridge.ActivityEventListener;
-import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.LifecycleEventListener;
 import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
-import com.facebook.react.bridge.ReadableMap;
-import com.facebook.react.bridge.WritableMap;
-import com.facebook.react.bridge.WritableNativeMap;
 
 public class Braintree extends ReactContextBaseJavaModule implements ActivityEventListener, LifecycleEventListener {
-    private final Context mContext;
+    private final ReactApplicationContext mContext;
     private FragmentActivity mCurrentActivity;
     private BraintreeClient mBraintreeClient;
     private PayPalClient mPayPalClient;
-
-    private boolean mShippingRequired;
 
     private Callback successCallback;
     private Callback errorCallback;
@@ -67,35 +53,11 @@ public class Braintree extends ReactContextBaseJavaModule implements ActivityEve
     }
 
     @Override
-    public void onActivityResult(Activity activity, int requestCode, int resultCode, Intent intent) {
-        //NOTE: empty implementation
-    }
-
-    @Override
     public void onNewIntent(Intent intent) {
         if (mCurrentActivity != null) {
             mCurrentActivity.setIntent(intent);
         }
-    }
-
-    @Override
-    public void onHostResume() {
-        if (mBraintreeClient != null && mCurrentActivity != null) {
-            BrowserSwitchResult browserSwitchResult =
-                    mBraintreeClient.deliverBrowserSwitchResult(mCurrentActivity);
-            if (browserSwitchResult != null) {
-                switch (browserSwitchResult.getRequestCode()) {
-                    case BraintreeRequestCodes.PAYPAL:
-                        if (mPayPalClient != null) {
-                            mPayPalClient.onBrowserSwitchResult(
-                                    browserSwitchResult,
-                                    this::handlePayPalResult
-                            );
-                        }
-                        break;
-                }
-            }
-        }
+        // TODO: we should reinit paypalRequest ?? Not sure :/
     }
 
     @ReactMethod
@@ -123,72 +85,34 @@ public class Braintree extends ReactContextBaseJavaModule implements ActivityEve
     }
 
     @ReactMethod
-    public void paypalRequest(final String amount, final boolean shippingRequired, final String currencyCode, final Callback successCallback, final Callback errorCallback) {
-        this.successCallback = successCallback;
-        this.errorCallback = errorCallback;
-
-        mShippingRequired = shippingRequired;
-        mPayPalClient = new PayPalClient(mBraintreeClient);
-        PayPalCheckoutRequest request = new PayPalCheckoutRequest(amount);
-        request.setCurrencyCode(currencyCode);
-        request.setIntent(PayPalPaymentIntent.AUTHORIZE);
-        request.setShippingAddressRequired(shippingRequired);
-        request.setShippingAddressEditable(shippingRequired);
-        mPayPalClient.tokenizePayPalAccount(
-            mCurrentActivity,
-            request,
-            e -> handlePayPalResult(null, e)
-        );
-    }
-
-    private WritableMap getPayPalAddressMap(PostalAddress address) {
-        WritableNativeMap map = new WritableNativeMap();
-        map.putString("streetAddress", address.getStreetAddress());
-        map.putString("recipientName", address.getRecipientName());
-        map.putString("postalCode", address.getPostalCode());
-        map.putString("countryCodeAlpha2", address.getCountryCodeAlpha2());
-        map.putString("extendedAddress", address.getExtendedAddress());
-        map.putString("region", address.getRegion());
-        map.putString("locality", address.getLocality());
-        return map;
-    }
-
-    private void handlePayPalResult(
-            @Nullable PayPalAccountNonce payPalAccountNonce,
-            @Nullable Exception error
-    ) {
-        if (error != null) {
-            nonceErrorCallback(error);
-            return;
-        }
-        if (payPalAccountNonce != null) {
-            WritableNativeMap map = new WritableNativeMap();
-            map.putString("nonce", payPalAccountNonce.getString());
-            map.putString("email", payPalAccountNonce.getEmail());
-            map.putString("firstName", payPalAccountNonce.getFirstName());
-            map.putString("lastName", payPalAccountNonce.getLastName());
-            map.putString("phone", payPalAccountNonce.getPhone());
-//             if (payPalAccountNonce.getBillingAddress() != null) {
-//                 map.putMap("billingAddress", getPayPalAddressMap(payPalAccountNonce.getBillingAddress()));
-//             }
-            final PostalAddress shippingAddress = payPalAccountNonce.getShippingAddress();
-            if (mShippingRequired && shippingAddress != null) {
-                map.putMap("shippingAddress", getPayPalAddressMap(shippingAddress));
+    public void paypalRequest(final String amount, final boolean shippingRequired, final String currencyCode) {
+        mCurrentActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                PaypalListenerImpl paypalListener = new PaypalListenerImpl(mContext, shippingRequired);
+                mPayPalClient = new PayPalClient(mCurrentActivity, mBraintreeClient);
+                mPayPalClient.setListener(paypalListener);
+                PayPalCheckoutRequest request = new PayPalCheckoutRequest(amount);
+                request.setCurrencyCode(currencyCode);
+                request.setIntent(PayPalPaymentIntent.AUTHORIZE);
+                request.setShippingAddressRequired(shippingRequired);
+                request.setShippingAddressEditable(shippingRequired);
+                mPayPalClient.tokenizePayPalAccount(
+                    mCurrentActivity,
+                    request
+                );
             }
-            this.successCallback.invoke(map);
-        }
+        });
     }
 
-    private void nonceErrorCallback(Exception error) {
-        if (error instanceof UserCanceledException) {
-            this.errorCallback.invoke("USER_CANCELLATION");
-        } else {
-            this.errorCallback.invoke(error.getMessage());
-        }
+    @Override
+    public void onActivityResult(Activity activity, int requestCode, int resultCode, Intent intent) {
+        //NOTE: empty implementation
     }
 
-    private void nonceCallback(String nonce) {
-        this.successCallback.invoke(nonce);
+    @Override
+    public void onHostResume() {
+        //NOTE: empty implementation
     }
 
     @Override
@@ -198,6 +122,16 @@ public class Braintree extends ReactContextBaseJavaModule implements ActivityEve
 
     @Override
     public void onHostDestroy() {
+        //NOTE: empty implementation
+    }
+
+    @ReactMethod
+    public void addListener(String eventName) {
+        //NOTE: empty implementation
+    }
+
+    @ReactMethod
+    public void removeListeners(Integer count) {
         //NOTE: empty implementation
     }
 }
