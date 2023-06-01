@@ -16,10 +16,18 @@ import com.facebook.react.modules.core.DeviceEventManagerModule;
 public class PaypalListenerImpl implements PayPalListener {
     private final ReactApplicationContext context;
     private boolean shippingRequired;
+    private int onHostPauseCounter = 0;
 
-    public PaypalListenerImpl(@NonNull ReactApplicationContext context, @NonNull boolean shippingRequired) {
+    public PaypalListenerImpl(@NonNull ReactApplicationContext context) {
         this.context = context;
+    }
+
+    public void setShippingRequired(boolean shippingRequired) {
         this.shippingRequired = shippingRequired;
+    }
+
+    public void incrementOnHostPauseCounter() {
+        onHostPauseCounter++;
     }
 
     private void sendEvent(String eventName,
@@ -60,12 +68,21 @@ public class PaypalListenerImpl implements PayPalListener {
     public void onPayPalFailure(@NonNull Exception error) {
         WritableNativeMap map = new WritableNativeMap();
         if (error instanceof UserCanceledException) {
-            map.putString("error", "USER_CANCELLATION");
+            /**
+            * HACK:
+            * If the user canceled the payment, send the event only if the user canceled it explicitly
+            * `isExplicitCancelation()` is false when the user canceled the payment by pressing the back button
+            * So `onHostPauseCounter` is used to check if the user canceled the payment by pressing the back button
+            * If `onHostPauseCounter` is lower than 2, it means that user is still in the custom tabs
+            * Otherwise there is a chance that the user opened the browser instead of custom tabs
+            **/
+            if (((UserCanceledException) error).isExplicitCancelation() || onHostPauseCounter < 2) {
+                map.putString("error", "USER_CANCELLATION");
+                sendEvent("PaypalStatus", map);
+            }
         } else {
             map.putString("error", error.getMessage());
+            sendEvent("PaypalStatus", map);
         }
-        sendEvent("PaypalStatus", map);
     }
-
-
 }
