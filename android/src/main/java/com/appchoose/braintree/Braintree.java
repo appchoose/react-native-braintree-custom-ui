@@ -38,6 +38,8 @@ public class Braintree extends ReactContextBaseJavaModule implements ActivityEve
     private PayPalClient mPayPalClient;
     private PaypalListenerImpl mPaypalListener;
 
+    static int onHostPauseCounter = 0;
+
     private Callback successCallback;
     private Callback errorCallback;
 
@@ -62,6 +64,7 @@ public class Braintree extends ReactContextBaseJavaModule implements ActivityEve
 
     @ReactMethod
     public void setup(final String url, final Callback successCallback, final Callback errorCallback) {
+        onHostPauseCounter = 0;
         String token = "";
         mCurrentActivity = (FragmentActivity) getCurrentActivity();
         try {
@@ -119,7 +122,7 @@ public class Braintree extends ReactContextBaseJavaModule implements ActivityEve
     @Override
     public void onHostPause() {
         if (mPaypalListener != null) {
-            mPaypalListener.incrementOnHostPauseCounter();
+            onHostPauseCounter++;
         }
     }
 

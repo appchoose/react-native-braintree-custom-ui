@@ -16,7 +16,6 @@ import com.facebook.react.modules.core.DeviceEventManagerModule;
 public class PaypalListenerImpl implements PayPalListener {
     private final ReactApplicationContext context;
     private boolean shippingRequired;
-    private int onHostPauseCounter = 0;
 
     public PaypalListenerImpl(@NonNull ReactApplicationContext context) {
         this.context = context;
@@ -24,10 +23,6 @@ public class PaypalListenerImpl implements PayPalListener {
 
     public void setShippingRequired(boolean shippingRequired) {
         this.shippingRequired = shippingRequired;
-    }
-
-    public void incrementOnHostPauseCounter() {
-        onHostPauseCounter++;
     }
 
     private void sendEvent(String eventName,
@@ -76,11 +71,11 @@ public class PaypalListenerImpl implements PayPalListener {
             * If `onHostPauseCounter` is lower than 2, it means that user is still in the custom tabs
             * Otherwise there is a chance that the user opened the browser instead of custom tabs
             **/
-            if (((UserCanceledException) error).isExplicitCancelation() || onHostPauseCounter < 2) {
+            if (((UserCanceledException) error).isExplicitCancelation() || Braintree.onHostPauseCounter < 2) {
                 map.putString("error", "USER_CANCELLATION");
                 sendEvent("PaypalStatus", map);
             }
-        } else {
+        } else if (!error.getMessage().contains("The response contained inconsistent data.")) {
             map.putString("error", error.getMessage());
             sendEvent("PaypalStatus", map);
         }
