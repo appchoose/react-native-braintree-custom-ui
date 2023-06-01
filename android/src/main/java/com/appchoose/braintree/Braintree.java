@@ -58,7 +58,6 @@ public class Braintree extends ReactContextBaseJavaModule implements ActivityEve
         if (mCurrentActivity != null) {
             mCurrentActivity.setIntent(intent);
         }
-        // TODO: we should reinit paypalRequest ?? Not sure :/
     }
 
     @ReactMethod
