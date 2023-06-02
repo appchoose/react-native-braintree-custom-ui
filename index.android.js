@@ -1,7 +1,8 @@
 'use strict';
 
 import {
-  NativeModules
+  NativeModules,
+  NativeEventEmitter,
 } from 'react-native';
 
 const Braintree = NativeModules.Braintree;
@@ -14,27 +15,37 @@ module.exports = {
   },
   showPayPalViewController(amount, shippingRequired, currencyCode) {
     return new Promise(function(resolve, reject) {
-      Braintree.paypalRequest(
-          amount,
-          shippingRequired,
-          currencyCode,
-          ({
-             nonce,
-             email,
-             firstName,
-             lastName,
-             phone,
-             shippingAddress
-           }) => resolve({
+      const paypalEmitter = new NativeEventEmitter();
+      paypalEmitter.addListener("PaypalStatus", (params) => callback(params));
+      const callback = (params) => {
+        paypalEmitter.removeAllListeners("PaypalStatus");
+        if (params.error) {
+          reject(params.error);
+        } else {
+          const {
+            nonce,
+            email,
+            firstName,
+            lastName,
+            phone,
+            shippingAddress
+          } = params;
+          resolve({
             nonce,
             email,
             firstName,
             lastName,
             phone,
             shipping: shippingAddress
-          }),
-          error => reject(error)
+          });
+        }
+      }
+      Braintree.paypalRequest(
+        amount,
+        shippingRequired,
+        currencyCode
       );
+
     });
   },
 };
