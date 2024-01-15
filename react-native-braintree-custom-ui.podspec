@@ -13,7 +13,7 @@ Pod::Spec.new do |s|
   s.platform         = :ios, "12.0"
   s.source_files     = 'ios/RCTBraintree/**/*.{h,m}'
   s.dependency         'React'
-  s.dependency 'Braintree'
-  s.dependency 'Braintree/DataCollector'
-  s.dependency 'Braintree/LocalPayment'
+  s.dependency 'Braintree', '6.11.0'
+  s.dependency 'Braintree/DataCollector', '6.11.0'
+  s.dependency 'Braintree/LocalPayment', '6.11.0'
 end
