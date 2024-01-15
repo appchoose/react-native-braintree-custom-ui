@@ -104,7 +104,7 @@ RCT_EXPORT_METHOD(showPayPalViewController: (NSString *)amount shippingrequired:
                 } else {
                     args = [@[[NSNull null], tokenizedPayPalAccount.nonce, email, firstName, lastName] mutableCopy];
                 }
-            } else if (error != nil && (error.code == 4 || error.code == 6)) {
+            } else if (error != nil && error.code == 1) {
                 args = @[@"USER_CANCELLATION", [NSNull null]];
             } else {
                 args = @[error.description, [NSNull null]];
