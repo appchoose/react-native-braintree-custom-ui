@@ -34,7 +34,7 @@ RCT_EXPORT_MODULE();
 RCT_EXPORT_METHOD(setupWithURLScheme:(NSString *)serverUrl urlscheme:(NSString*)urlscheme callback:(RCTResponseSenderBlock)callback)
 {
     URLScheme = urlscheme;
-    [BTAppContextSwitcher setReturnURLScheme:urlscheme];
+    [[BTAppContextSwitcher sharedInstance] setReturnURLScheme:urlscheme];
 
     NSURL *clientTokenURL = [NSURL URLWithString:serverUrl];
     NSMutableURLRequest *clientTokenRequest = [NSMutableURLRequest requestWithURL:clientTokenURL];
@@ -58,12 +58,16 @@ RCT_EXPORT_METHOD(showPayPalViewController: (NSString *)amount shippingrequired:
 {
     dispatch_async(dispatch_get_main_queue(), ^ {
 
-        BTPayPalDriver *payPalDriver = [[BTPayPalDriver alloc] initWithAPIClient:self.braintreeClient];
-        BTPayPalCheckoutRequest *request= [[BTPayPalCheckoutRequest alloc] initWithAmount:amount];
-        request.currencyCode = currencyCode;
-        request.shippingAddressRequired = shippingrequired;
-        request.shippingAddressEditable = shippingrequired;
-        [payPalDriver requestOneTimePayment:request completion:^(BTPayPalAccountNonce * _Nullable tokenizedPayPalAccount, NSError * _Nullable error)
+        BTPayPalClient *paypalClient = [[BTPayPalClient alloc] initWithAPIClient:self.braintreeClient];
+        BTPayPalCheckoutRequest *request = [[BTPayPalCheckoutRequest alloc] initWithAmount:amount
+                                                                            intent:BTPayPalRequestIntentAuthorize
+                                                                            userAction:BTPayPalRequestUserActionNone
+                                                                            offerPayLater:NO
+                                                                            currencyCode:currencyCode
+                                                                            requestBillingAgreement:NO];
+        request.isShippingAddressRequired = shippingrequired;
+        request.isShippingAddressEditable = shippingrequired;
+        [paypalClient tokenizeWithCheckoutRequest:request completion:^(BTPayPalAccountNonce * _Nullable tokenizedPayPalAccount, NSError * _Nullable error)
         {
             NSMutableArray *args = @[[NSNull null]];
 
@@ -117,7 +121,7 @@ RCT_EXPORT_METHOD(showPayPalViewController: (NSString *)amount shippingrequired:
 {
 
     if ([url.scheme localizedCaseInsensitiveCompare:URLScheme] == NSOrderedSame) {
-        return [BTAppContextSwitcher handleOpenURL:url];
+        return [[BTAppContextSwitcher sharedInstance] handleOpenURL:url];
     }
     return NO;
 }

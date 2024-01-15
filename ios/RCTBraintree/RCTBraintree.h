@@ -11,13 +11,10 @@
 #import <React/RCTUtils.h>
 #import <React/RCTConvert.h>
 
-#import "BraintreePaymentFlow.h"
-#import "BraintreeCore.h"
-#import "BraintreePayPal.h"
-#import "BTDataCollector.h"
+#import "Braintree/Braintree-Swift.h"
 
-@interface RCTBraintree : UIViewController <RCTBridgeModule, BTViewControllerPresentingDelegate>
-@property (nonatomic, strong, readwrite) BTPaymentFlowDriver *paymentFlowDriver;
+@interface RCTBraintree : UIViewController <RCTBridgeModule, UIViewControllerPreviewingDelegate>
+@property (nonatomic, strong, readwrite) BTLocalPaymentClient *localPaymentClient;
 @property (nonatomic, strong) BTAPIClient *braintreeClient;
 @property (nonatomic, strong) UIViewController *reactRoot;
 @property (nonatomic, strong) BTDataCollector *dataCollector;
