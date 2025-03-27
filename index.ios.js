@@ -13,12 +13,13 @@ module.exports = {
       });
     });
   },
-  showPayPalViewController(amount, shippingRequired, currencyCode) {
+  showPayPalViewController(amount, shippingRequired, currencyCode, email) {
     return new Promise(function(resolve, reject) {
       RCTBraintree.showPayPalViewController(
           amount,
           shippingRequired,
           currencyCode,
+          email,
           function(err, nonce, email, firstName, lastName, shipping) {
             nonce != null ? resolve({
               nonce,

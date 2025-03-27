@@ -54,7 +54,7 @@ RCT_EXPORT_METHOD(setupWithURLScheme:(NSString *)serverUrl urlscheme:(NSString*)
 }
 
 
-RCT_EXPORT_METHOD(showPayPalViewController: (NSString *)amount shippingrequired:(BOOL*)shippingrequired currencyCode:(NSString*)currencyCode callback: (RCTResponseSenderBlock) callback)
+RCT_EXPORT_METHOD(showPayPalViewController: (NSString *)amount shippingrequired:(BOOL*)shippingrequired currencyCode:(NSString*)currencyCode email:(NSString*)email callback: (RCTResponseSenderBlock) callback)
 {
     dispatch_async(dispatch_get_main_queue(), ^ {
 
@@ -64,7 +64,9 @@ RCT_EXPORT_METHOD(showPayPalViewController: (NSString *)amount shippingrequired:
                                                                             userAction:BTPayPalRequestUserActionNone
                                                                             offerPayLater:NO
                                                                             currencyCode:currencyCode
-                                                                            requestBillingAgreement:NO];
+                                                                            requestBillingAgreement:NO
+                                                                            shippingCallbackURL:nil
+                                                                            userAuthenticationEmail:email];
         request.isShippingAddressRequired = shippingrequired;
         request.isShippingAddressEditable = shippingrequired;
         [paypalClient tokenizeWithCheckoutRequest:request completion:^(BTPayPalAccountNonce * _Nullable tokenizedPayPalAccount, NSError * _Nullable error)
@@ -105,9 +107,9 @@ RCT_EXPORT_METHOD(showPayPalViewController: (NSString *)amount shippingrequired:
                     args = [@[[NSNull null], tokenizedPayPalAccount.nonce, email, firstName, lastName] mutableCopy];
                 }
             } else if (error != nil && error.code == 1) {
-                args = @[@"USER_CANCELLATION", [NSNull null]];
+                args = [@[@"USER_CANCELLATION", [NSNull null]] mutableCopy];
             } else {
-                args = @[error.description, [NSNull null]];
+                args = [@[error.description, [NSNull null]] mutableCopy];
             }
 
             callback(args);
