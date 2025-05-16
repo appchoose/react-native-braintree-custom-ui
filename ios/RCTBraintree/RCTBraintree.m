@@ -54,7 +54,7 @@ RCT_EXPORT_METHOD(setupWithURLScheme:(NSString *)serverUrl urlscheme:(NSString*)
 }
 
 
-RCT_EXPORT_METHOD(showPayPalViewController: (NSString *)amount shippingrequired:(BOOL*)shippingrequired currencyCode:(NSString*)currencyCode email:(NSString*)email callback: (RCTResponseSenderBlock) callback)
+RCT_EXPORT_METHOD(showPayPalViewController: (NSString *)amount shippingrequired:(BOOL)shippingrequired currencyCode:(NSString*)currencyCode email:(NSString*)email callback: (RCTResponseSenderBlock) callback)
 {
     dispatch_async(dispatch_get_main_queue(), ^ {
 
