@@ -134,7 +134,9 @@ public class Braintree extends ReactContextBaseJavaModule {
     public void setup(final String token, final Callback successCallback, final Callback errorCallback) {
         try {
             this.token = token;
-            this.braintreeClient = new BraintreeClient(Objects.requireNonNull(getCurrentActivity()), this.token);
+            // Braintree SDK v4.9.0+ requires FragmentActivity for lifecycle-aware operations
+            FragmentActivity activity = (FragmentActivity) Objects.requireNonNull(getCurrentActivity());
+            this.braintreeClient = new BraintreeClient(activity, this.token);
             this.dataCollector = new DataCollector(this.braintreeClient);
             this.braintreeClient.getConfiguration(new ConfigurationCallback() {
                 @Override
@@ -252,7 +254,8 @@ public class Braintree extends ReactContextBaseJavaModule {
     @ReactMethod
     public void getDeviceData(final ReadableMap options, final Callback successCallback, final Callback errorCallback) {
         try {
-            this.dataCollector.collectDeviceData(Objects.requireNonNull(getCurrentActivity()), new DataCollectorCallback() {
+            FragmentActivity activity = (FragmentActivity) Objects.requireNonNull(getCurrentActivity());
+            this.dataCollector.collectDeviceData(activity, new DataCollectorCallback() {
                 @Override
                 public void onResult(@androidx.annotation.Nullable String deviceData, @androidx.annotation.Nullable Exception error) {
                     if (error != null) {
@@ -278,12 +281,17 @@ public class Braintree extends ReactContextBaseJavaModule {
         }
         request.setShouldVault(false);
 
-        getCurrentActivity().runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                tokenizeVenmoAccount(request);
-            }
-        });
+        Activity activity = getCurrentActivity();
+        if (activity != null) {
+            activity.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    tokenizeVenmoAccount(request);
+                }
+            });
+        } else {
+            errorCallback.invoke("Activity is null");
+        }
     }
 
     private void tokenizeVenmoAccount(VenmoRequest request) {
