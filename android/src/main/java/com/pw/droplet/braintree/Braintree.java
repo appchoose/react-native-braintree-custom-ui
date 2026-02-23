@@ -70,11 +70,14 @@ public class Braintree extends ReactContextBaseJavaModule {
     }
 
     private void setVenmoClient(VenmoClient venmoClient) {
-        this.venmoClient = venmoClient;
-        if (this.venmoClient != null) {
+        // Only set if not already initialized in setup() method
+        // In 4.45.0+, VenmoClient must be initialized with BraintreeClient in setup()
+        if (this.venmoClient == null && venmoClient != null) {
+            this.venmoClient = venmoClient;
             this.venmoClient.setListener(new VenmoListener() {
                 @Override
                 public void onVenmoSuccess(@NonNull VenmoAccountNonce venmoAccountNonce) {
+                    // Success is handled via tokenizeVenmoAccount callback
                 }
 
                 @Override
@@ -138,6 +141,22 @@ public class Braintree extends ReactContextBaseJavaModule {
             FragmentActivity activity = (FragmentActivity) Objects.requireNonNull(getCurrentActivity());
             this.braintreeClient = new BraintreeClient(activity, this.token);
             this.dataCollector = new DataCollector(this.braintreeClient);
+
+            // Initialize VenmoClient after BraintreeClient is ready (required in 4.45.0+)
+            // VenmoClient constructor now requires non-null BraintreeClient in SDK 4.45.0+
+            this.venmoClient = new VenmoClient(this.braintreeClient);
+            this.venmoClient.setListener(new VenmoListener() {
+                @Override
+                public void onVenmoSuccess(@NonNull VenmoAccountNonce venmoAccountNonce) {
+                    // Success is handled via tokenizeVenmoAccount callback
+                }
+
+                @Override
+                public void onVenmoFailure(@NonNull Exception error) {
+                    invokeVenmoErrorCallback(error);
+                }
+            });
+
             this.braintreeClient.getConfiguration(new ConfigurationCallback() {
                 @Override
                 public void onResult(@androidx.annotation.Nullable Configuration configuration, @androidx.annotation.Nullable Exception error) {
@@ -295,8 +314,15 @@ public class Braintree extends ReactContextBaseJavaModule {
     }
 
     private void tokenizeVenmoAccount(VenmoRequest request) {
-        try{
+        try {
             AppCompatActivity activity = (AppCompatActivity) Objects.requireNonNull(getCurrentActivity());
+            
+            // Create venmoClient if it doesn't exist (minimal change for 4.45.0 compatibility)
+            if (this.venmoClient == null && this.braintreeClient != null) {
+                this.venmoClient = new VenmoClient(this.braintreeClient);
+            }
+            
+            // Keep original reflection pattern to copy internal state
             VenmoClient tempClient = new VenmoClient(braintreeClient);
 
             Field fieldBraintreeClient = tempClient.getClass().getDeclaredField("braintreeClient");
@@ -310,7 +336,7 @@ public class Braintree extends ReactContextBaseJavaModule {
             fieldVenmoApi.set(this.venmoClient, venmoApi);
 
             this.venmoClient.tokenizeVenmoAccount(activity, request);
-        } catch (Exception error){
+        } catch (Exception error) {
             invokeVenmoErrorCallback(error);
         }
     }
