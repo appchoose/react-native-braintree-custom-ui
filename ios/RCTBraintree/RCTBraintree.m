@@ -35,7 +35,8 @@
 - (instancetype)init
 {
     if (self = [super init]) {
-        self.dataCollector = [[BTDataCollector alloc] initWithAPIClient:self.braintreeClient];
+        // Don't initialize dataCollector here - braintreeClient is nil at init time
+        // DataCollector will be initialized in setupWithClientToken after braintreeClient is ready
     }
     return self;
 }
@@ -50,11 +51,13 @@ RCT_EXPORT_METHOD(setupWithClientToken:(NSString *)clientToken
 
     self.braintreeClient = [[BTAPIClient alloc] initWithAuthorization:clientToken];
 
-    if (self.braintreeClient == nil) {
-        callback(@[@(NO)]);
+    // Initialize DataCollector after braintreeClient is ready (required for 4.45.0+)
+    if (self.braintreeClient != nil) {
+        self.dataCollector = [[BTDataCollector alloc] initWithAPIClient:self.braintreeClient];
+        callback(@[@(YES)]);
     }
     else {
-        callback(@[@(YES)]);
+        callback(@[@(NO)]);
     }
 }
 
@@ -237,35 +240,31 @@ RCT_EXPORT_METHOD(getDeviceData:(NSDictionary *)options
 {
     dispatch_async(dispatch_get_main_queue(), ^{
         NSError *error = nil;
-        NSString *deviceData = nil;
         NSString *dataSelector = options[@"dataCollector"];
 
-        //Initialize the data collector in V5
-        self.dataCollector = [[BTDataCollector alloc] initWithAPIClient: self.braintreeClient];
+        // Ensure dataCollector is initialized (should already be done in setupWithClientToken)
+        if (self.dataCollector == nil && self.braintreeClient != nil) {
+            self.dataCollector = [[BTDataCollector alloc] initWithAPIClient:self.braintreeClient];
+        }
         
         //Data collection methods
         if ([dataSelector isEqualToString:@"card"] || [dataSelector isEqualToString:@"both"]) {
-            [self.dataCollector collectDeviceData:^(NSString * _Nonnull deviceData) {
-                deviceData = deviceData;
+            // collectDeviceData is async - callback is called in completion block
+            [self.dataCollector collectDeviceData:^(NSString * _Nonnull collectedData) {
+                callback(@[[NSNull null], collectedData]);
             }];
+            return; // Early return - callback is called in completion block
         } else if ([dataSelector isEqualToString:@"paypal"] || [dataSelector isEqualToString:@"venmo"]) {
-            deviceData = [PPDataCollector collectPayPalDeviceData];
+            NSString *deviceData = [PPDataCollector collectPayPalDeviceData];
+            callback(@[[NSNull null], deviceData]);
         } else {
             NSMutableDictionary* details = [NSMutableDictionary dictionary];
             [details setValue:@"Invalid data collector" forKey:NSLocalizedDescriptionKey];
             error = [NSError errorWithDomain:@"RCTBraintree" code:255 userInfo:details];
 
             SKZLog(@"Invalid data collector: %@. Use one of: `card`, `paypal`, or `both`", dataSelector);
+            callback(@[error.description, [NSNull null]]);
         }
-
-        NSArray *args = @[];
-        if (error == nil) {
-            args = @[[NSNull null], deviceData];
-        } else {
-            args = @[error.description, [NSNull null]];
-        }
-
-        callback(args);
     });
 }
 
